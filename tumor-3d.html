@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Tumor Visualization - NeuroOnco AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <style>
+        .viewer-container {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: var(--spacing-xl);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .canvas-wrapper {
+            background: #000;
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            position: relative;
+            aspect-ratio: 16/10;
+        }
+
+        #threejs-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .viewer-overlay {
+            position: absolute;
+            top: var(--spacing-md);
+            left: var(--spacing-md);
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-lg);
+            color: white;
+        }
+
+        .viewer-controls {
+            position: absolute;
+            bottom: var(--spacing-md);
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: var(--spacing-sm);
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-full);
+        }
+
+        .control-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: white;
+            color: var(--bg-primary);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            transition: all var(--transition-fast);
+        }
+
+        .control-btn:hover {
+            transform: scale(1.1);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .control-btn.active {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .view-options {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .option-group {
+            background: var(--bg-secondary);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-lg);
+        }
+
+        .option-group h4 {
+            margin-bottom: var(--spacing-md);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+        }
+
+        .toggle-switch {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-sm) 0;
+        }
+
+        .switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            background: var(--bg-elevated);
+            border-radius: var(--radius-full);
+            cursor: pointer;
+            transition: background var(--transition-base);
+        }
+
+        .switch.active {
+            background: var(--primary-blue);
+        }
+
+        .switch::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform var(--transition-base);
+        }
+
+        .switch.active::after {
+            transform: translateX(24px);
+        }
+
+        .landmark-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .landmark-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm) 0;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .landmark-item:last-child {
+            border-bottom: none;
+        }
+
+        .landmark-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+        }
+
+        @media (max-width: 968px) {
+            .viewer-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-container">
+                <a href="index.html" class="nav-brand">🧠 NeuroOnco AI</a>
+                <ul class="nav-menu">
+                    <li><a href="index.html" class="nav-link">Home</a></li>
+                    <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+                    <li><a href="tumor-3d.html" class="nav-link active">3D Visualization</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container" style="padding-top: var(--spacing-2xl); padding-bottom: var(--spacing-3xl);">
+        <div class="flex justify-between items-center mb-xl">
+            <div>
+                <h1>3D Tumor Visualization</h1>
+                <p class="text-secondary">Interactive WebGL-based brain and tumor model</p>
+            </div>
+            <div class="flex gap-sm">
+                <button class="btn btn-outline" onclick="resetView()">Reset View</button>
+                <button class="btn btn-primary" onclick="toggleVRMode()">🥽 VR Mode</button>
+            </div>
+        </div>
+
+        <!-- 3D Viewer -->
+        <div class="viewer-container">
+            <div class="canvas-wrapper">
+                <canvas id="threejs-canvas"></canvas>
+
+                <div class="viewer-overlay">
+                    <div style="font-size: 0.875rem; color: rgba(255,255,255,0.8);">Tumor Location</div>
+                    <div style="font-size: 1.25rem; font-weight: 700;" id="tumorLocationLabel">Right Frontal Lobe</div>
+                    <div style="font-size: 0.875rem; color: rgba(255,255,255,0.8); margin-top: 0.5rem;">
+                        Volume: <strong id="tumorVolumeLabel">32.5 cm³</strong>
+                    </div>
+                </div>
+
+                <div class="viewer-controls">
+                    <button class="control-btn active" onclick="setViewMode('rotate')" title="Rotate">🔄</button>
+                    <button class="control-btn" onclick="setViewMode('pan')" title="Pan">✋</button>
+                    <button class="control-btn" onclick="setViewMode('zoom')" title="Zoom">🔍</button>
+                    <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.3); margin: 0 0.5rem;"></div>
+                    <button class="control-btn" onclick="toggleAnimation()" title="Auto-rotate">▶️</button>
+                    <button class="control-btn" onclick="takeScreenshot()" title="Screenshot">📷</button>
+                </div>
+            </div>
+
+            <!-- View Options -->
+            <div class="view-options">
+                <div class="option-group">
+                    <h4>Display Options</h4>
+
+                    <div class="toggle-switch">
+                        <span>Show Tumor</span>
+                        <div class="switch active" id="tumorToggle" onclick="toggleLayer('tumor')"></div>
+                    </div>
+
+                    <div class="toggle-switch">
+                        <span>Show Edema</span>
+                        <div class="switch active" id="edemaToggle" onclick="toggleLayer('edema')"></div>
+                    </div>
+
+                    <div class="toggle-switch">
+                        <span>Show Brain</span>
+                        <div class="switch active" id="brainToggle" onclick="toggleLayer('brain')"></div>
+                    </div>
+
+                    <div class="toggle-switch">
+                        <span>Show Landmarks</span>
+                        <div class="switch" id="landmarksToggle" onclick="toggleLayer('landmarks')"></div>
+                    </div>
+
+                    <div class="toggle-switch">
+                        <span>Wireframe Mode</span>
+                        <div class="switch" id="wireframeToggle" onclick="toggleWireframe()"></div>
+                    </div>
+                </div>
+
+                <div class="option-group">
+                    <h4>Anatomical Landmarks</h4>
+                    <ul class="landmark-list">
+                        <li class="landmark-item">
+                            <div class="landmark-color" style="background: #4299E1;"></div>
+                            <span>Frontal Lobe</span>
+                        </li>
+                        <li class="landmark-item">
+                            <div class="landmark-color" style="background: #48BB78;"></div>
+                            <span>Temporal Lobe</span>
+                        </li>
+                        <li class="landmark-item">
+                            <div class="landmark-color" style="background: #ED8936;"></div>
+                            <span>Parietal Lobe</span>
+                        </li>
+                        <li class="landmark-item">
+                            <div class="landmark-color" style="background: #9F7AEA;"></div>
+                            <span>Occipital Lobe</span>
+                        </li>
+                        <li class="landmark-item">
+                            <div class="landmark-color" style="background: #F56565;"></div>
+                            <span>Tumor Mass</span>
+                        </li>
+                        <li class="landmark-item">
+                            <div class="landmark-color" style="background: #ECC94B;"></div>
+                            <span>Edema Region</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="option-group">
+                    <h4>Tumor Metrics</h4>
+                    <div style="padding: var(--spacing-sm) 0; border-bottom: 1px solid var(--glass-border);">
+                        <div class="text-secondary" style="font-size: 0.875rem;">Volume</div>
+                        <div style="font-weight: 600;">32.5 cm³</div>
+                    </div>
+                    <div style="padding: var(--spacing-sm) 0; border-bottom: 1px solid var(--glass-border);">
+                        <div class="text-secondary" style="font-size: 0.875rem;">Max Diameter</div>
+                        <div style="font-weight: 600;">4.2 cm</div>
+                    </div>
+                    <div style="padding: var(--spacing-sm) 0;">
+                        <div class="text-secondary" style="font-size: 0.875rem;">Sphericity</div>
+                        <div style="font-weight: 600;">0.78</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Additional Info -->
+        <div class="grid-3 mb-xl">
+            <div class="card-glass text-center">
+                <div style="font-size: 2rem; margin-bottom: var(--spacing-sm);">🎯</div>
+                <h4>Surgical Access</h4>
+                <p class="text-secondary">Right frontal craniotomy recommended</p>
+            </div>
+
+            <div class="card-glass text-center">
+                <div style="font-size: 2rem; margin-bottom: var(--spacing-sm);">⚠️</div>
+                <h4>Critical Structures</h4>
+                <p class="text-secondary">Motor cortex proximity: 1.2 cm</p>
+            </div>
+
+            <div class="card-glass text-center">
+                <div style="font-size: 2rem; margin-bottom: var(--spacing-sm);">📊</div>
+                <h4>Resectability</h4>
+                <p class="text-secondary">Gross total resection feasible</p>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex gap-md justify-center">
+            <button class="btn btn-secondary" onclick="window.location.href='mri-analysis.html'">
+                ← Back to MRI Analysis
+            </button>
+            <button class="btn btn-primary" onclick="window.location.href='pathway-simulator.html'">
+                View Treatment Pathway →
+            </button>
+            <button class="btn btn-outline" onclick="exportModel()">
+                Export 3D Model
+            </button>
+        </div>
+    </div>
+
+    <script src="api-client.js"></script>
+    <script src="app.js"></script>
+    <script>
+        // Three.js scene setup
+        let scene, camera, renderer, brain, tumor, edema;
+        let isAnimating = false;
+        let viewMode = 'rotate';
+
+        function init3DScene() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+
+            // Camera
+            const canvas = document.getElementById('threejs-canvas');
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+            camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+            camera.position.z = 5;
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+            renderer.setSize(width, height);
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 5, 5);
+            scene.add(directionalLight);
+
+            // Brain (simplified ellipsoid)
+            const brainGeometry = new THREE.SphereGeometry(2, 32, 32);
+            brainGeometry.scale(1, 1.2, 0.9);
+            const brainMaterial = new THREE.MeshPhongMaterial({
+                color: 0x888888,
+                transparent: true,
+                opacity: 0.3,
+                shininess: 30
+            });
+            brain = new THREE.Mesh(brainGeometry, brainMaterial);
+            scene.add(brain);
+
+            // Tumor (irregular sphere)
+            const tumorGeometry = new THREE.SphereGeometry(0.6, 16, 16);
+            const tumorMaterial = new THREE.MeshPhongMaterial({
+                color: 0xff0000,
+                transparent: true,
+                opacity: 0.8,
+                emissive: 0xff0000,
+                emissiveIntensity: 0.2
+            });
+            tumor = new THREE.Mesh(tumorGeometry, tumorMaterial);
+            tumor.position.set(0.8, 0.5, 0.3);
+            scene.add(tumor);
+
+            // Edema (larger, more transparent)
+            const edemaGeometry = new THREE.SphereGeometry(0.9, 16, 16);
+            const edemaMaterial = new THREE.MeshPhongMaterial({
+                color: 0xffff00,
+                transparent: true,
+                opacity: 0.3,
+                emissive: 0xffff00,
+                emissiveIntensity: 0.1
+            });
+            edema = new THREE.Mesh(edemaGeometry, edemaMaterial);
+            edema.position.set(0.8, 0.5, 0.3);
+            scene.add(edema);
+
+            // Mouse controls
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+
+            canvas.addEventListener('mousedown', () => isDragging = true);
+            canvas.addEventListener('mouseup', () => isDragging = false);
+            canvas.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+
+                if (viewMode === 'rotate') {
+                    brain.rotation.y += deltaX * 0.01;
+                    brain.rotation.x += deltaY * 0.01;
+                    tumor.rotation.y += deltaX * 0.01;
+                    tumor.rotation.x += deltaY * 0.01;
+                    edema.rotation.y += deltaX * 0.01;
+                    edema.rotation.x += deltaY * 0.01;
+                }
+
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            // Render loop
+            function animate() {
+                requestAnimationFrame(animate);
+
+                if (isAnimating) {
+                    brain.rotation.y += 0.005;
+                    tumor.rotation.y += 0.005;
+                    edema.rotation.y += 0.005;
+                }
+
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            // Handle resize
+            window.addEventListener('resize', () => {
+                const width = canvas.clientWidth;
+                const height = canvas.clientHeight;
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
+            });
+        }
+
+        function toggleLayer(layer) {
+            const toggle = document.getElementById(layer + 'Toggle');
+            toggle.classList.toggle('active');
+
+            const isActive = toggle.classList.contains('active');
+
+            switch (layer) {
+                case 'tumor':
+                    tumor.visible = isActive;
+                    break;
+                case 'edema':
+                    edema.visible = isActive;
+                    break;
+                case 'brain':
+                    brain.visible = isActive;
+                    break;
+            }
+        }
+
+        function toggleWireframe() {
+            const toggle = document.getElementById('wireframeToggle');
+            toggle.classList.toggle('active');
+            const isWireframe = toggle.classList.contains('active');
+
+            brain.material.wireframe = isWireframe;
+            tumor.material.wireframe = isWireframe;
+            edema.material.wireframe = isWireframe;
+        }
+
+        function setViewMode(mode) {
+            viewMode = mode;
+            document.querySelectorAll('.control-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        function toggleAnimation() {
+            isAnimating = !isAnimating;
+            event.target.textContent = isAnimating ? '⏸️' : '▶️';
+        }
+
+        function resetView() {
+            camera.position.set(0, 0, 5);
+            brain.rotation.set(0, 0, 0);
+            tumor.rotation.set(0, 0, 0);
+            edema.rotation.set(0, 0, 0);
+        }
+
+        function toggleVRMode() {
+            UI.showToast('VR mode requires WebXR-compatible device', 'info');
+        }
+
+        function takeScreenshot() {
+            const canvas = document.getElementById('threejs-canvas');
+            const dataURL = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = 'tumor-3d-view.png';
+            link.href = dataURL;
+            link.click();
+            UI.showToast('Screenshot saved!', 'success');
+        }
+
+        function exportModel() {
+            UI.showToast('3D model export functionality would require backend support', 'info');
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            init3DScene();
+        });
+    </script>
+</body>
+
+</html>

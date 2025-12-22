@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - NeuroOnco AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+
+    <style>
+        .dashboard-header {
+            background: var(--gradient-primary);
+            padding: var(--spacing-2xl) 0;
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .dashboard-header h1 {
+            color: white;
+            -webkit-text-fill-color: white;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .action-card {
+            background: var(--gradient-accent);
+            color: white;
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition-base);
+            border: none;
+            font-family: var(--font-sans);
+        }
+
+        .action-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .action-card-icon {
+            font-size: 2rem;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .patient-list {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-xl);
+        }
+
+        .patient-item {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr 1fr 150px;
+            gap: var(--spacing-md);
+            padding: var(--spacing-md);
+            border-bottom: 1px solid var(--glass-border);
+            align-items: center;
+            transition: background var(--transition-fast);
+        }
+
+        .patient-item:hover {
+            background: var(--bg-elevated);
+        }
+
+        .patient-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-bar {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        @media (max-width: 768px) {
+            .patient-item {
+                grid-template-columns: 1fr;
+                gap: var(--spacing-sm);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-container">
+                <a href="index.html" class="nav-brand">🧠 NeuroOnco AI</a>
+                <ul class="nav-menu">
+                    <li><a href="index.html" class="nav-link">Home</a></li>
+                    <li><a href="dashboard.html" class="nav-link active">Dashboard</a></li>
+                    <li><a href="patient-intake.html" class="btn btn-primary btn-sm">New Case</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <div class="container">
+            <h1>Clinical Dashboard</h1>
+            <p style="color: rgba(255,255,255,0.9);">Manage patients and view analysis results</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <button class="action-card" onclick="window.location.href='patient-intake.html'">
+                <div class="action-card-icon">➕</div>
+                <div>New Patient</div>
+            </button>
+            <button class="action-card" onclick="window.location.href='mri-analysis.html'">
+                <div class="action-card-icon">🔬</div>
+                <div>MRI Analysis</div>
+            </button>
+            <button class="action-card" onclick="window.location.href='genomic-analysis.html'">
+                <div class="action-card-icon">🧬</div>
+                <div>Genomic Analysis</div>
+            </button>
+            <button class="action-card" onclick="window.location.href='treatment-plan.html'">
+                <div class="action-card-icon">💊</div>
+                <div>Treatment Plans</div>
+            </button>
+            <button class="action-card" onclick="window.location.href='tumor-3d.html'">
+                <div class="action-card-icon">🎯</div>
+                <div>3D Visualization</div>
+            </button>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="grid-4 mb-xl">
+            <div class="stat-card">
+                <div class="stat-value" id="totalPatients">0</div>
+                <div class="stat-label">Total Patients</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="activeAnalyses">0</div>
+                <div class="stat-label">Active Analyses</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="completedPlans">0</div>
+                <div class="stat-label">Treatment Plans</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="avgConfidence">0%</div>
+                <div class="stat-label">Avg Confidence</div>
+            </div>
+        </div>
+
+        <!-- Patient List -->
+        <div class="patient-list">
+            <div class="flex justify-between items-center mb-lg">
+                <h2>Patient Cases</h2>
+                <button class="btn btn-primary" onclick="window.location.href='patient-intake.html'">
+                    + Add New Patient
+                </button>
+            </div>
+
+            <div class="search-bar">
+                <input type="text" class="form-input" id="searchInput"
+                    placeholder="Search patients by ID, name, or diagnosis...">
+            </div>
+
+            <div id="patientListContainer">
+                <!-- Patient items will be dynamically inserted here -->
+            </div>
+
+            <div id="emptyState" class="text-center" style="padding: var(--spacing-3xl); display: none;">
+                <div style="font-size: 4rem; margin-bottom: var(--spacing-lg);">📋</div>
+                <h3>No Patients Yet</h3>
+                <p class="text-secondary">Start by adding a new patient case</p>
+                <button class="btn btn-primary mt-lg" onclick="window.location.href='patient-intake.html'">
+                    Add First Patient
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Load and display patients
+        function loadPatients() {
+            const patients = AppState.patients;
+            const container = document.getElementById('patientListContainer');
+            const emptyState = document.getElementById('emptyState');
+
+            if (patients.length === 0) {
+                container.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            container.style.display = 'block';
+            emptyState.style.display = 'none';
+
+            // Update stats
+            document.getElementById('totalPatients').textContent = patients.length;
+            document.getElementById('activeAnalyses').textContent = Math.floor(patients.length * 0.7);
+            document.getElementById('completedPlans').textContent = Math.floor(patients.length * 0.6);
+            document.getElementById('avgConfidence').textContent = '87%';
+
+            // Render patient list
+            container.innerHTML = `
+        <div class="patient-item" style="font-weight: 600; background: var(--bg-elevated);">
+          <div>Patient ID</div>
+          <div>Name & Diagnosis</div>
+          <div>Date Added</div>
+          <div>Status</div>
+          <div>Actions</div>
+        </div>
+      `;
+
+            patients.forEach(patient => {
+                const item = document.createElement('div');
+                item.className = 'patient-item';
+                item.innerHTML = `
+          <div><span class="badge badge-primary">${patient.id.substr(0, 8)}</span></div>
+          <div>
+            <div style="font-weight: 600;">${patient.name}</div>
+            <div class="text-secondary" style="font-size: 0.875rem;">${patient.diagnosis || 'Pending diagnosis'}</div>
+          </div>
+          <div class="text-secondary">${DataUtils.formatDate(patient.dateAdded)}</div>
+          <div>
+            <span class="badge ${patient.status === 'completed' ? 'badge-success' : 'badge-warning'}">
+              ${patient.status || 'In Progress'}
+            </span>
+          </div>
+          <div>
+            <button class="btn btn-sm btn-primary" onclick="viewPatient('${patient.id}')">
+              View Details
+            </button>
+          </div>
+        `;
+                container.appendChild(item);
+            });
+        }
+
+        function viewPatient(patientId) {
+            AppState.setCurrentPatient(patientId);
+            window.location.href = 'mri-analysis.html';
+        }
+
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const items = document.querySelectorAll('.patient-item');
+
+            items.forEach((item, index) => {
+                if (index === 0) return; // Skip header
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(searchTerm) ? 'grid' : 'none';
+            });
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadPatients();
+
+            // Add sample data if empty (for demo)
+            if (AppState.patients.length === 0) {
+                const samplePatients = [
+                    {
+                        id: DataUtils.generateId(),
+                        name: 'John Doe',
+                        age: 58,
+                        diagnosis: 'Glioblastoma Multiforme',
+                        dateAdded: new Date('2024-01-15'),
+                        status: 'completed'
+                    },
+                    {
+                        id: DataUtils.generateId(),
+                        name: 'Jane Smith',
+                        age: 45,
+                        diagnosis: 'Anaplastic Astrocytoma',
+                        dateAdded: new Date('2024-02-20'),
+                        status: 'In Progress'
+                    },
+                    {
+                        id: DataUtils.generateId(),
+                        name: 'Robert Johnson',
+                        age: 62,
+                        diagnosis: 'Oligodendroglioma',
+                        dateAdded: new Date('2024-03-10'),
+                        status: 'completed'
+                    }
+                ];
+
+                samplePatients.forEach(p => AppState.addPatient(p));
+                loadPatients();
+            }
+        });
+    </script>
+</body>
+
+</html>

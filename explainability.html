@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Explainability - NeuroOnco AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <style>
+        .explanation-card {
+            background: var(--bg-secondary);
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-xl);
+            border-left: 4px solid var(--primary-blue);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .feature-importance {
+            display: grid;
+            gap: var(--spacing-md);
+        }
+
+        .feature-bar {
+            background: var(--bg-elevated);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-lg);
+        }
+
+        .feature-bar-fill {
+            height: 30px;
+            background: var(--gradient-primary);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            padding: 0 var(--spacing-md);
+            color: white;
+            font-weight: 600;
+            margin-top: var(--spacing-sm);
+            transition: width var(--transition-slow);
+        }
+
+        .gradcam-viewer {
+            background: #000;
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            position: relative;
+            aspect-ratio: 1;
+        }
+
+        .heatmap-overlay {
+            position: absolute;
+            inset: var(--spacing-lg);
+            background: radial-gradient(circle at 45% 40%,
+                    rgba(255, 0, 0, 0.8) 0%,
+                    rgba(255, 100, 0, 0.6) 20%,
+                    rgba(255, 200, 0, 0.4) 40%,
+                    transparent 60%);
+            border-radius: var(--radius-md);
+            mix-blend-mode: screen;
+        }
+
+        .confidence-breakdown {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-md);
+        }
+
+        .confidence-item {
+            background: var(--bg-elevated);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            text-align: center;
+        }
+
+        .confidence-circle {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: conic-gradient(var(--primary-blue) 0% var(--percentage), var(--bg-primary) var(--percentage) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto var(--spacing-md);
+            position: relative;
+        }
+
+        .confidence-circle::before {
+            content: '';
+            position: absolute;
+            inset: 10px;
+            background: var(--bg-elevated);
+            border-radius: 50%;
+        }
+
+        .confidence-value {
+            position: relative;
+            z-index: 1;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-container">
+                <a href="index.html" class="nav-brand">🧠 NeuroOnco AI</a>
+                <ul class="nav-menu">
+                    <li><a href="index.html" class="nav-link">Home</a></li>
+                    <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+                    <li><a href="explainability.html" class="nav-link active">Explainability</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container" style="padding-top: var(--spacing-2xl); padding-bottom: var(--spacing-3xl);">
+        <div class="text-center mb-xl">
+            <h1>AI Explainability Dashboard</h1>
+            <p class="text-secondary">Transparent insights into AI decision-making process</p>
+        </div>
+
+        <!-- Model Confidence -->
+        <div class="card-glass mb-xl">
+            <h3>Model Confidence Breakdown</h3>
+            <p class="text-secondary mb-lg">Confidence scores across different analysis components</p>
+
+            <div class="confidence-breakdown">
+                <div class="confidence-item">
+                    <div class="confidence-circle" style="--percentage: 92%;">
+                        <div class="confidence-value">92%</div>
+                    </div>
+                    <h4>MRI Segmentation</h4>
+                    <p class="text-secondary">U-Net model confidence</p>
+                </div>
+
+                <div class="confidence-item">
+                    <div class="confidence-circle" style="--percentage: 88%;">
+                        <div class="confidence-value">88%</div>
+                    </div>
+                    <h4>Biomarker Analysis</h4>
+                    <p class="text-secondary">Genomic interpretation</p>
+                </div>
+
+                <div class="confidence-item">
+                    <div class="confidence-circle" style="--percentage: 87%;">
+                        <div class="confidence-value">87%</div>
+                    </div>
+                    <h4>Treatment Recommendation</h4>
+                    <p class="text-secondary">Protocol optimization</p>
+                </div>
+
+                <div class="confidence-item">
+                    <div class="confidence-circle" style="--percentage: 85%;">
+                        <div class="confidence-value">85%</div>
+                    </div>
+                    <h4>Outcome Prediction</h4>
+                    <p class="text-secondary">Survival forecasting</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SHAP Feature Importance -->
+        <div class="grid-2 mb-xl">
+            <div class="card-glass">
+                <h3>SHAP Feature Importance</h3>
+                <p class="text-secondary mb-lg">Top factors influencing treatment recommendation</p>
+
+                <div class="feature-importance">
+                    <div class="feature-bar">
+                        <div class="flex justify-between">
+                            <strong>MGMT Methylation Status</strong>
+                            <span class="text-secondary">0.28</span>
+                        </div>
+                        <div class="feature-bar-fill" style="width: 93%;">High Impact</div>
+                    </div>
+
+                    <div class="feature-bar">
+                        <div class="flex justify-between">
+                            <strong>Tumor Volume</strong>
+                            <span class="text-secondary">0.22</span>
+                        </div>
+                        <div class="feature-bar-fill" style="width: 73%;">High Impact</div>
+                    </div>
+
+                    <div class="feature-bar">
+                        <div class="flex justify-between">
+                            <strong>IDH1 Mutation</strong>
+                            <span class="text-secondary">0.19</span>
+                        </div>
+                        <div class="feature-bar-fill" style="width: 63%;">Moderate Impact</div>
+                    </div>
+
+                    <div class="feature-bar">
+                        <div class="flex justify-between">
+                            <strong>Patient Age</strong>
+                            <span class="text-secondary">0.15</span>
+                        </div>
+                        <div class="feature-bar-fill" style="width: 50%;">Moderate Impact</div>
+                    </div>
+
+                    <div class="feature-bar">
+                        <div class="flex justify-between">
+                            <strong>KPS Score</strong>
+                            <span class="text-secondary">0.11</span>
+                        </div>
+                        <div class="feature-bar-fill" style="width: 37%;">Low Impact</div>
+                    </div>
+
+                    <div class="feature-bar">
+                        <div class="flex justify-between">
+                            <strong>Tumor Location</strong>
+                            <span class="text-secondary">0.05</span>
+                        </div>
+                        <div class="feature-bar-fill" style="width: 17%;">Low Impact</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-glass">
+                <h3>SHAP Summary Plot</h3>
+                <p class="text-secondary mb-lg">Feature impact distribution</p>
+                <div style="height: 350px;">
+                    <canvas id="shapChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grad-CAM Visualization -->
+        <div class="card-glass mb-xl">
+            <h3>Grad-CAM Attention Map</h3>
+            <p class="text-secondary mb-lg">Visual explanation of what the model focuses on during MRI analysis</p>
+
+            <div class="grid-2">
+                <div>
+                    <h4 class="mb-md">Original MRI Slice</h4>
+                    <div class="gradcam-viewer">
+                        <svg width="100%" height="100%" viewBox="0 0 400 400">
+                            <ellipse cx="200" cy="200" rx="150" ry="180" fill="#1a1a1a" stroke="#333"
+                                stroke-width="2" />
+                            <ellipse cx="200" cy="200" rx="130" ry="160" fill="#222" stroke="#444" stroke-width="1" />
+                            <ellipse cx="180" cy="180" rx="20" ry="30" fill="#0a0a0a" />
+                            <ellipse cx="220" cy="180" rx="20" ry="30" fill="#0a0a0a" />
+                            <circle cx="240" cy="170" r="35" fill="#2a2a2a" />
+                        </svg>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="mb-md">Grad-CAM Heatmap Overlay</h4>
+                    <div class="gradcam-viewer">
+                        <svg width="100%" height="100%" viewBox="0 0 400 400">
+                            <ellipse cx="200" cy="200" rx="150" ry="180" fill="#1a1a1a" stroke="#333"
+                                stroke-width="2" />
+                            <ellipse cx="200" cy="200" rx="130" ry="160" fill="#222" stroke="#444" stroke-width="1" />
+                            <ellipse cx="180" cy="180" rx="20" ry="30" fill="#0a0a0a" />
+                            <ellipse cx="220" cy="180" rx="20" ry="30" fill="#0a0a0a" />
+                            <circle cx="240" cy="170" r="35" fill="#2a2a2a" />
+                        </svg>
+                        <div class="heatmap-overlay"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-lg">
+                <div class="explanation-card">
+                    <h4>Interpretation</h4>
+                    <p class="text-secondary">
+                        The Grad-CAM heatmap shows that the model's attention is primarily focused on the tumor region
+                        in the right frontal lobe (red area).
+                        The high activation in this area indicates that the model correctly identified the tumor mass as
+                        the most important feature for classification.
+                        Secondary attention (yellow-orange areas) is given to the surrounding edema, which is clinically
+                        relevant for treatment planning.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Decision Tree -->
+        <div class="card-glass mb-xl">
+            <h3>Decision Path Visualization</h3>
+            <p class="text-secondary mb-lg">Step-by-step reasoning for treatment recommendation</p>
+
+            <div style="height: 400px;">
+                <canvas id="decisionTreeChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Model Information -->
+        <div class="grid-3 mb-xl">
+            <div class="stat-card">
+                <div class="stat-label">Model Architecture</div>
+                <div class="stat-value" style="font-size: 1.25rem;">U-Net + XGBoost</div>
+                <p class="text-secondary" style="font-size: 0.875rem;">Ensemble approach</p>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">Training Dataset</div>
+                <div class="stat-value" style="font-size: 1.25rem;">12,500</div>
+                <p class="text-secondary" style="font-size: 0.875rem;">Patient cases</p>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">Model Version</div>
+                <div class="stat-value" style="font-size: 1.25rem;">v2.3.1</div>
+                <p class="text-secondary" style="font-size: 0.875rem;">Updated: Jan 2024</p>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex gap-md justify-center">
+            <button class="btn btn-secondary" onclick="window.location.href='treatment-plan.html'">
+                ← Back to Treatment Plan
+            </button>
+            <button class="btn btn-primary" onclick="window.location.href='blockchain-audit.html'">
+                View Audit Trail →
+            </button>
+            <button class="btn btn-outline" onclick="exportExplanation()">
+                Export Explanation
+            </button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        function createShapChart() {
+            const ctx = document.getElementById('shapChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Feature Impact',
+                        data: [
+                            { x: 0.28, y: 6 },
+                            { x: 0.22, y: 5 },
+                            { x: 0.19, y: 4 },
+                            { x: 0.15, y: 3 },
+                            { x: 0.11, y: 2 },
+                            { x: 0.05, y: 1 }
+                        ],
+                        backgroundColor: 'hsla(210, 100%, 56%, 0.6)',
+                        borderColor: 'hsl(210, 100%, 56%)',
+                        pointRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'SHAP Value', color: 'hsl(0, 0%, 75%)' },
+                            ticks: { color: 'hsl(0, 0%, 75%)' },
+                            grid: { color: 'hsla(0, 0%, 100%, 0.05)' }
+                        },
+                        y: {
+                            title: { display: true, text: 'Feature Rank', color: 'hsl(0, 0%, 75%)' },
+                            ticks: {
+                                color: 'hsl(0, 0%, 75%)',
+                                callback: (value) => {
+                                    const labels = ['', 'Location', 'KPS', 'Age', 'IDH1', 'Volume', 'MGMT'];
+                                    return labels[value] || '';
+                                }
+                            },
+                            grid: { color: 'hsla(0, 0%, 100%, 0.05)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: 'hsl(0, 0%, 75%)' } }
+                    }
+                }
+            });
+        }
+
+        function createDecisionTreeChart() {
+            const ctx = document.getElementById('decisionTreeChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Input Data', 'MRI Analysis', 'Genomic Profile', 'Clinical History', 'Treatment Options', 'Final Recommendation'],
+                    datasets: [{
+                        label: 'Confidence Flow',
+                        data: [100, 92, 88, 85, 87, 87],
+                        backgroundColor: [
+                            'hsla(210, 100%, 56%, 0.8)',
+                            'hsla(180, 65%, 55%, 0.8)',
+                            'hsla(270, 70%, 60%, 0.8)',
+                            'hsla(190, 85%, 65%, 0.8)',
+                            'hsla(142, 70%, 55%, 0.8)',
+                            'hsla(210, 100%, 56%, 0.8)'
+                        ],
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: { display: true, text: 'Confidence (%)', color: 'hsl(0, 0%, 75%)' },
+                            ticks: { color: 'hsl(0, 0%, 75%)' },
+                            grid: { color: 'hsla(0, 0%, 100%, 0.05)' }
+                        },
+                        x: {
+                            ticks: { color: 'hsl(0, 0%, 75%)' },
+                            grid: { color: 'hsla(0, 0%, 100%, 0.05)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: 'hsl(0, 0%, 75%)' } }
+                    }
+                }
+            });
+        }
+
+        function exportExplanation() {
+            UI.showToast('Exporting explainability report...', 'info');
+            setTimeout(() => {
+                UI.showToast('Report exported!', 'success');
+            }, 1500);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            createShapChart();
+            createDecisionTreeChart();
+        });
+    </script>
+</body>
+
+</html>
