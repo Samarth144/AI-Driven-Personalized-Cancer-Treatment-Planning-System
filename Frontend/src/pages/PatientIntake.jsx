@@ -242,39 +242,60 @@ const PatientIntake = () => {
       <Grid container spacing={4} className="intake-grid">
         {currentStep === 1 && (
           <Grid item xs={12} className="preview-column">
-            <Box className="preview-wrapper">
-              <Typography variant="h3" className="page-title">NEW CASE</Typography>
-              <Typography variant="body1" className="page-subtitle">Initialize multimodal data collection.</Typography>
-              <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                <div className="id-card">
-                  <div className="holo-bar"></div>
-                  
-                  {/* Holographic Image Portal */}
-                  <div className="id-card-portal">
-                    <div className="portal-circle"></div>
-                    <img 
-                      src="https://images.unsplash.com/photo-1559757175-0eb30cd8c063?auto=format&fit=crop&w=400&q=80" 
-                      alt="Neural Scan" 
-                      className="portal-image" 
-                    />
-                  </div>
+            <div className="preview-layout-row">
+              <Box className="preview-wrapper">
+                <Typography variant="h3" className="page-title">NEW CASE</Typography>
+                <Typography variant="body1" className="page-subtitle">Initialize multimodal data collection.</Typography>
+                <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+                  <div className="preview-layout-row">
+                    <div className="id-card">
+                      <div className="holo-bar"></div>
+                      <div className="id-header">
+                        <div className="id-avatar"><BadgeOutlinedIcon /></div>
+                        <div>
+                          <span className="id-label">PATIENT PREVIEW</span>
+                          <h4 className="id-name">{formData.name || "ENTER NAME..."}</h4>
+                        </div>
+                      </div>
+                      <div className="id-details">
+                        <div className="id-field"><span>MRN</span><p>{formData.mrn || "---"}</p></div>
+                        <div className="id-field"><span>DOB</span><p>{formData.dob || "--/--/--"}</p></div>
+                        <div className="id-field"><span>CONTACT</span><p>{formData.contact || "---"}</p></div>
+                        <div className="id-field"><span>DIAGNOSIS</span><p>{formData.diagnosisDate || "--/--/--"}</p></div>
+                      </div>
+                    </div>
 
-                  <div className="id-header">
-                    <div className="id-avatar"><BadgeOutlinedIcon /></div>
-                    <div>
-                      <span className="id-label">PATIENT PREVIEW</span>
-                      <h4 className="id-name">{formData.name || "ENTER NAME..."}</h4>
+                    {/* Biometric Stack Parallel to ID Card */}
+                    <div className="biometric-stack-external">
+                      <div className="biometric-img-container biometric-img-top">
+                        <img 
+                          src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80" 
+                          alt="Patient Profile" 
+                        />
+                        <div className="bio-tag-top">ID PHOTO</div>
+                      </div>
+
+                      <div className="biometric-img-container biometric-img-bottom">
+                        <img 
+                          src="https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?auto=format&fit=crop&w=400&q=80" 
+                          alt="Biometric Scan" 
+                        />
+                        <div className="bio-tag-bottom">
+                          <FingerprintIcon sx={{ fontSize: 12 }} />
+                          <span>BIOMETRIC</span>
+                        </div>
+                      </div>
+
+                      <motion.div 
+                        animate={{ opacity: [0.3, 1, 0.3] }}
+                        transition={{ duration: 3, repeat: Infinity }}
+                        className="biometric-glow-line"
+                      />
                     </div>
                   </div>
-                  <div className="id-details">
-                    <div className="id-field"><span>MRN</span><p>{formData.mrn || "---"}</p></div>
-                    <div className="id-field"><span>DOB</span><p>{formData.dob || "--/--/--"}</p></div>
-                    <div className="id-field"><span>CONTACT</span><p>{formData.contact || "---"}</p></div>
-                    <div className="id-field"><span>DIAGNOSIS</span><p>{formData.diagnosisDate || "--/--/--"}</p></div>
-                  </div>
-                </div>
-              </motion.div>
-            </Box>
+                </motion.div>
+              </Box>
+            </div>
           </Grid>
         )}
 
@@ -291,15 +312,15 @@ const PatientIntake = () => {
                   <Grid container spacing={4}>
                     <Grid item xs={12} md={9}>
                       <div className="form-inputs-col">
-                        <TextField fullWidth label="Full Legal Name" variant="outlined" className="tech-input"
+                        <TextField fullWidth label="Full Legal Name" variant="outlined" className="tech-input fixed-width"
                           value={formData.name} onChange={(e) => handleChange('name', e.target.value)}
                           InputProps={{ startAdornment: <InputAdornment position="start"><BadgeOutlinedIcon /></InputAdornment> }}
                         />
-                        <TextField fullWidth label="Medical Record Number (MRN)" placeholder="e.g. MR-2026-X" className="tech-input"
+                        <TextField fullWidth label="Medical Record Number (MRN)" placeholder="e.g. MR-2026-X" className="tech-input fixed-width"
                           value={formData.mrn} onChange={(e) => handleChange('mrn', e.target.value)}
                           InputProps={{ startAdornment: <InputAdornment position="start"><NumbersOutlinedIcon /></InputAdornment> }}
                         />
-                        <TextField fullWidth label="Contact Number" placeholder="e.g. 9876543210" className="tech-input"
+                        <TextField fullWidth label="Contact Number" placeholder="e.g. 9876543210" className="tech-input fixed-width"
                           value={formData.contact} onChange={(e) => handleChange('contact', e.target.value)}
                           InputProps={{ startAdornment: <InputAdornment position="start"><LocalPhoneOutlinedIcon /></InputAdornment> }}
                         />
@@ -406,60 +427,59 @@ const PatientIntake = () => {
                     <Typography variant="h5">04 // CLINICAL HISTORY</Typography>
                     <span className="req-badge">PATIENT PERFORMANCE</span>
                   </div>
-                                    <Grid container spacing={2} className="performance-grid">
-                                      <Grid item xs={12} md={4}>
-                                        <div className="performance-terminal-box" style={{ '--kps-color': getKPSColor(formData.kps) }}>
-                                          <div className="score-header">
-                                            <Typography className="kps-label">KPS Score</Typography>
-                                            <Typography className="kps-value">{formData.kps}%</Typography>
-                                          </div>
-                                          <Slider
-                                            value={formData.kps}
-                                            onChange={(_, val) => handleChange('kps', val)}
-                                            step={10} marks min={0} max={100}
-                                            className="tech-slider"
-                                          />
-                                          <Typography variant="caption" className="score-desc">
-                                            <span>{formData.kps >= 80 ? "Normal" : formData.kps >= 50 ? "Assisted" : "Hosp."}</span>
-                                          </Typography>
-                                        </div>
-                                      </Grid>
-                  
-                                      <Grid item xs={12} md={2.6}>
-                                        <div className="performance-terminal-box">
-                                          <Typography className="ecog-label">ECOG Score (0-4)</Typography>
-                                          <div className="ecog-selector">
-                                            {[0, 1, 2, 3, 4].map((score) => (
-                                              <Button key={score} onClick={() => handleChange('ecog', score)}
-                                                className={`ecog-btn ${formData.ecog === score ? 'active' : ''}`}>
-                                                {score}
-                                              </Button>
-                                            ))}
-                                          </div>
-                                          <Typography variant="caption" className="ecog-desc-text">
-                                            {getECOGDescription(formData.ecog).substring(0, 30)}...
-                                          </Typography>
-                                        </div>
-                                      </Grid>
-                  
-                                      <Grid item xs={12} md={2.7}>
-                                        <TagInput 
-                                          label="SYMPTOMS" icon={<MedicalServicesIcon />}
-                                          tags={formData.symptoms ? formData.symptoms.split(',').filter(s => s) : []}
-                                          onAdd={(t) => handleChange('symptoms', formData.symptoms ? `${formData.symptoms},${t}` : t)}
-                                          onDelete={(t) => handleChange('symptoms', formData.symptoms.split(',').filter(x => x !== t).join(','))}
-                                        />
-                                      </Grid>
-                                      <Grid item xs={12} md={2.7}>
-                                        <TagInput 
-                                          label="COMORBIDITIES" icon={<FavoriteBorderIcon />}
-                                          tags={formData.comorbidities ? formData.comorbidities.split(',').filter(s => s) : []}
-                                          onAdd={(t) => handleChange('comorbidities', formData.comorbidities ? `${formData.comorbidities},${t}` : t)}
-                                          onDelete={(t) => handleChange('comorbidities', formData.comorbidities.split(',').filter(x => x !== t).join(','))}
-                                        />
-                                      </Grid>
-                                    </Grid>
-                  <div className="terminal-footer">
+                                                      <Grid container spacing={2} className="performance-grid">
+                                                        <Grid item xs={12} md={3}>
+                                                          <div className="performance-terminal-box" style={{ '--kps-color': getKPSColor(formData.kps) }}>
+                                                            <div className="score-header">
+                                                              <Typography className="kps-label">KPS Score</Typography>
+                                                              <Typography className="kps-value">{formData.kps}%</Typography>
+                                                            </div>
+                                                            <Slider
+                                                              value={formData.kps}
+                                                              onChange={(_, val) => handleChange('kps', val)}
+                                                              step={10} marks min={0} max={100}
+                                                              className="tech-slider"
+                                                            />
+                                                            <Typography variant="caption" className="score-desc">
+                                                              <span>{formData.kps >= 80 ? "Normal" : formData.kps >= 50 ? "Assisted" : "Hosp."}</span>
+                                                            </Typography>
+                                                          </div>
+                                                        </Grid>
+                                    
+                                                        <Grid item xs={12} md={3}>
+                                                          <div className="performance-terminal-box">
+                                                            <Typography className="ecog-label">ECOG Score (0-4)</Typography>
+                                                            <div className="ecog-selector">
+                                                              {[0, 1, 2, 3, 4].map((score) => (
+                                                                <Button key={score} onClick={() => handleChange('ecog', score)}
+                                                                  className={`ecog-btn ${formData.ecog === score ? 'active' : ''}`}>
+                                                                  {score}
+                                                                </Button>
+                                                              ))}
+                                                            </div>
+                                                            <Typography variant="caption" className="ecog-desc-text">
+                                                              {getECOGDescription(formData.ecog).substring(0, 30)}...
+                                                            </Typography>
+                                                          </div>
+                                                        </Grid>
+                                    
+                                                        <Grid item xs={12} md={3}>
+                                                          <TagInput 
+                                                            label="SYMPTOMS" icon={<MedicalServicesIcon />}
+                                                            tags={formData.symptoms ? formData.symptoms.split(',').filter(s => s) : []}
+                                                            onAdd={(t) => handleChange('symptoms', formData.symptoms ? `${formData.symptoms},${t}` : t)}
+                                                            onDelete={(t) => handleChange('symptoms', formData.symptoms.split(',').filter(x => x !== t).join(','))}
+                                                          />
+                                                        </Grid>
+                                                        <Grid item xs={12} md={3}>
+                                                          <TagInput 
+                                                            label="COMORBIDITIES" icon={<FavoriteBorderIcon />}
+                                                            tags={formData.comorbidities ? formData.comorbidities.split(',').filter(s => s) : []}
+                                                            onAdd={(t) => handleChange('comorbidities', formData.comorbidities ? `${formData.comorbidities},${t}` : t)}
+                                                            onDelete={(t) => handleChange('comorbidities', formData.comorbidities.split(',').filter(x => x !== t).join(','))}
+                                                          />
+                                                        </Grid>
+                                                      </Grid>                  <div className="terminal-footer">
                     <Button variant="text" className="tech-btn-text" onClick={() => setCurrentStep(3)}>BACK</Button>
                     <Button variant="contained" className="tech-btn" onClick={() => setCurrentStep(5)}>REVIEW CASE</Button>
                   </div>
