@@ -1,0 +1,101 @@
+.report-viewer {
+    background: var(--bg-secondary);
+    padding: var(--spacing-xl);
+    border-radius: var(--radius-xl);
+    margin-bottom: var(--spacing-xl);
+}
+
+.report-content {
+    background: #162032; /* Glass Navy */
+    color: #F8FAFC; /* Starlight */
+    padding: var(--spacing-2xl);
+    border-radius: var(--radius-lg);
+    font-family: 'Times New Roman', serif;
+    line-height: 1.8;
+    border: 1px solid rgba(0, 240, 255, 0.1); /* Subtle Cyan border */
+    box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.4);
+}
+
+.highlight {
+    background: rgba(0, 240, 255, 0.15); /* Cyan highlight instead of yellow */
+    color: #00F0FF;
+    padding: 0 0.25rem;
+    border-radius: 2px;
+}
+
+.extracted-data {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+.data-card {
+    background: var(--bg-elevated);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-lg);
+    border-left: 4px solid var(--primary-blue);
+}
+
+.highlight {
+    background: rgba(255, 255, 0, 0.3);
+    padding: 0 0.25rem;
+    border-radius: 2px;
+}
+
+.card-glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-xl);
+    box-shadow: var(--glass-shadow);
+}
+
+.grid-2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+/* Refactored inline styles */
+.histopathology-container {
+    padding-top: var(--spacing-2xl);
+    padding-bottom: var(--spacing-3xl);
+}
+
+.report-header {
+    text-align: center;
+    color: var(--text-primary);
+}
+
+.report-divider {
+    margin: var(--spacing-lg) 0;
+    border-color: var(--glass-border);
+}
+
+.report-section-title {
+    margin-top: var(--spacing-lg);
+    color: var(--text-primary);
+}
+
+.card-label {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.card-content-sm {
+    margin-top: var(--spacing-sm);
+    font-size: 0.875rem;
+}
+
+.classification-box {
+    padding: var(--spacing-lg);
+    background: var(--bg-elevated);
+    border-radius: var(--radius-lg);
+    margin-top: var(--spacing-md);
+}
+
+.implications-content {
+    line-height: 1.8;
+}

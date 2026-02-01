@@ -1,0 +1,111 @@
+.dashboard-header {
+    background: var(--gradient-primary);
+    padding: 4rem 0;
+    margin-bottom: 3rem;
+}
+
+.dashboard-header h1 {
+    color: white;
+    -webkit-text-fill-color: white;
+    background: none;
+    margin-bottom: 0.5rem;
+}
+
+.dashboard-header p {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1.125rem;
+    margin: 0;
+}
+
+.quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+}
+
+.action-card {
+    background: var(--gradient-accent);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: none;
+    text-decoration: none;
+    display: block;
+}
+
+.action-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.action-card-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Patient List */
+.patient-list {
+    background: var(--bg-secondary);
+    border-radius: 1.5rem;
+    padding: 2rem;
+    border: 1px solid var(--glass-border);
+}
+
+.search-bar {
+    margin-bottom: 1.5rem;
+}
+
+.patient-item {
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr 1fr 150px;
+    gap: 1rem;
+    padding: 1rem;
+    border-bottom: 1px solid var(--glass-border);
+    align-items: center;
+    transition: background 0.2s;
+}
+
+.patient-item:hover {
+    background: var(--bg-elevated);
+}
+
+.patient-item:last-child {
+    border-bottom: none;
+}
+
+.patient-item.header {
+    font-weight: 600;
+    background: var(--bg-elevated);
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+    border-bottom: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .patient-item {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+        border: 1px solid var(--glass-border);
+        margin-bottom: 1rem;
+        border-radius: 0.5rem;
+    }
+    
+    .patient-item.header {
+        display: none;
+    }
+}
+
+/* Refactored inline styles */
+.patient-name {
+    font-weight: 600;
+}
+
+.patient-diagnosis {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}

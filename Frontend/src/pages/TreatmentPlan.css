@@ -1,0 +1,185 @@
+.recommendation-card {
+    background: var(--gradient-primary);
+    color: white;
+    padding: var(--spacing-2xl);
+    border-radius: var(--radius-xl);
+    margin-bottom: var(--spacing-2xl);
+}
+
+.recommendation-card h2 {
+    color: white;
+    margin-bottom: var(--spacing-md);
+}
+
+.confidence-meter {
+    background: rgba(255, 255, 255, 0.2);
+    height: 40px;
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    margin-top: var(--spacing-lg);
+}
+
+.confidence-fill {
+    height: 100%;
+    background: white;
+    display: flex;
+    align-items: center;
+    padding: 0 var(--spacing-lg);
+    font-weight: 700;
+    transition: width var(--transition-slow);
+    color: var(--bg-primary);
+    white-space: nowrap;
+}
+
+.protocol-comparison {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-2xl);
+}
+
+.protocol-card {
+    background: var(--bg-secondary);
+    border: 2px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-xl);
+    transition: all var(--transition-base);
+    cursor: pointer;
+}
+
+.protocol-card.recommended {
+    border-color: var(--success);
+    background: hsla(142, 70%, 55%, 0.05);
+}
+
+.protocol-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl);
+}
+
+.protocol-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: var(--spacing-md);
+}
+
+.protocol-score {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+    margin: var(--spacing-md) 0;
+}
+
+.protocol-details {
+    list-style: none;
+    padding: 0;
+    margin-top: var(--spacing-lg);
+}
+
+.protocol-details li {
+    padding: var(--spacing-sm) 0;
+    border-bottom: 1px solid var(--glass-border);
+    display: flex;
+    justify-content: space-between;
+}
+
+.protocol-details li:last-child {
+    border-bottom: none;
+}
+
+.evidence-section {
+    background: var(--bg-elevated);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-lg);
+    border-left: 4px solid var(--info);
+    margin-bottom: var(--spacing-md);
+}
+
+.evidence-section:last-child {
+    margin-bottom: 0;
+}
+
+.guideline-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: 0.5rem 1rem;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-lg);
+    font-weight: 600;
+}
+
+.card-glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-xl);
+    box-shadow: var(--glass-shadow);
+}
+
+.stat-card {
+    background: var(--card-glass);
+    backdrop-filter: blur(20px);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    text-align: center;
+    border: 1px solid var(--glass-border);
+}
+
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: var(--spacing-sm);
+}
+
+.stat-label {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+/* Refactored inline styles */
+.treatment-plan-container {
+    padding-top: var(--spacing-2xl);
+    padding-bottom: var(--spacing-3xl);
+}
+
+.badge-recommended {
+    background: var(--bg-elevated);
+    color: var(--success);
+}
+
+.guideline-badge-themed {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.confidence-fill-themed {
+    background: var(--success);
+}
+
+.stat-value-sm {
+    font-size: 1.5rem;
+}
+
+.stat-desc {
+    font-size: 0.875rem;
+}
+
+.ml-sm {
+    margin-left: var(--spacing-sm);
+}

@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>AR Tumor Visualization</title>
+
+    <script
+      type="module"
+      src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"
+    ></script>
+
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: #4c4b4b;
+        font-family: Arial, sans-serif;
+      }
+
+      model-viewer {
+        width: 100vw;
+        height: 100vh;
+      }
+
+      /* Control Panel */
+      #controls {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        padding: 12px;
+        border-radius: 10px;
+        width: 260px;
+      }
+
+      #controls h3 {
+        margin-top: 0;
+        font-size: 16px;
+        text-align: center;
+      }
+
+      .control {
+        margin-bottom: 12px;
+      }
+
+      label {
+        font-size: 13px;
+      }
+
+      button {
+        width: 100%;
+        padding: 6px;
+        margin-top: 4px;
+        background: #e53935;
+        border: none;
+        color: white;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+
+      button.secondary {
+        background: #1e88e5;
+      }
+
+      input[type="range"] {
+        width: 100%;
+      }
+
+      /* Info Card */
+      #info {
+        margin-top: 10px;
+        font-size: 12px;
+        line-height: 1.4;
+        background: rgba(255, 255, 255, 0.08);
+        padding: 8px;
+        border-radius: 6px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- AR MODEL -->
+    <model-viewer
+      id="viewer"
+      src="tumor_with_brain_new7.glb"
+      camera-controls
+      auto-rotate
+      ar
+      ar-modes="scene-viewer webxr quick-look"
+      exposure="1.0"
+      shadow-intensity="1"
+    >
+    </model-viewer>
+
+    <!-- UI CONTROLS -->
+    <div id="controls">
+      <h3>AR Tumor Controls</h3>
+
+      <!-- Tumor Toggle -->
+      <div class="control">
+        <button id="toggleTumor">Hide Tumor</button>
+      </div>
+
+      <!-- Brain Transparency -->
+      <div class="control">
+        <label>Brain Transparency</label>
+        <input type="range" id="brainOpacity" min="0" max="100" value="25" />
+      </div>
+
+      <!-- Scale Toggle -->
+      <div class="control">
+        <button id="scaleToggle" class="secondary">Demo Scale</button>
+      </div>
+
+      <!-- Tumor Info -->
+      <div id="info">
+        <b>Tumor Info</b><br />
+        Volume: 82.4 cm³<br />
+        Max Diameter: 158 mm<br />
+        Regions: Multifocal
+      </div>
+    </div>
+
+    <script>
+      const viewer = document.getElementById("viewer");
+      const toggleTumorBtn = document.getElementById("toggleTumor");
+      const brainOpacitySlider = document.getElementById("brainOpacity");
+      const scaleToggleBtn = document.getElementById("scaleToggle");
+
+      let tumorVisible = true;
+      let demoScale = true;
+
+      // --- Tumor show / hide ---
+      toggleTumorBtn.addEventListener("click", () => {
+        tumorVisible = !tumorVisible;
+
+        viewer.model.materials.forEach((mat) => {
+          if (mat.name && mat.name.toLowerCase().includes("tumor")) {
+            mat.pbrMetallicRoughness.baseColorFactor[3] = tumorVisible ? 1 : 0;
+          }
+        });
+
+        toggleTumorBtn.textContent = tumorVisible ? "Hide Tumor" : "Show Tumor";
+      });
+
+      // --- Brain transparency ---
+      brainOpacitySlider.addEventListener("input", (e) => {
+        const alpha = e.target.value / 100;
+
+        viewer.model.materials.forEach((mat) => {
+          if (mat.name && mat.name.toLowerCase().includes("brain")) {
+            mat.pbrMetallicRoughness.baseColorFactor[3] = alpha;
+          }
+        });
+      });
+
+      // --- Real vs Demo scale toggle ---
+      scaleToggleBtn.addEventListener("click", () => {
+        demoScale = !demoScale;
+
+        viewer.scale = demoScale ? "1 1 1" : "0.6 0.6 0.6";
+
+        scaleToggleBtn.textContent = demoScale ? "Demo Scale" : "Real Scale";
+      });
+    </script>
+  </body>
+</html>

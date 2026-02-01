@@ -1,0 +1,14 @@
+torch
+torchvision
+torchaudio
+monai
+nibabel
+pydicom
+scipy
+trimesh
+scikit-image
+plotly
+numpy
+pandas
+matplotlib
+scikit-learn

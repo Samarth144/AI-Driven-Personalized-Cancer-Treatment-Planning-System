@@ -1,9 +1,33 @@
+# Node modules
 node_modules/
+**/node_modules/
+*/node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
 .env
-uploads/
+
+# Datasets (Large Files)
+**/Dataset/
+**/Datasets/
+**/AR_Assets/
+*.nii
+*.nii.gz
+*.dcm
+*.npy
+*.glb
+*.gltf
+*.pth
+
+# Logs
+logs
 *.log
+npm-debug.log*
+
+# OS
 .DS_Store
-.vscode/
-*.swp
-*.swo
-*~
+Thumbs.db
