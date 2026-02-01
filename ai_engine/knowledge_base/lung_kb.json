@@ -1,0 +1,25 @@
+{
+  "stages": {
+    "I": {
+      "surgery": ["Lobectomy"],
+      "adjuvant": [],
+      "follow_up": ["CT chest q6m for 2y then yearly"]
+    },
+    "II": {
+      "surgery": ["Lobectomy or pneumonectomy"],
+      "adjuvant": ["Platinum chemo"]
+    },
+    "III": {
+      "systemic": ["Concurrent chemo + radiation"],
+      "immunotherapy": ["Durvalumab consolidation if PD-L1+"]
+    },
+    "IV": {
+      "targeted": {
+        "EGFR": "Osimertinib",
+        "ALK": "Alectinib",
+        "ROS1": "Crizotinib"
+      },
+      "immunotherapy": ["Pembrolizumab if PD-L1 ≥50%"]
+    }
+  }
+}
