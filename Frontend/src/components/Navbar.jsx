@@ -83,8 +83,18 @@ const Navbar = () => {
               })}
             </Box>
 
-            {/* --- ACTION BUTTON --- */}
-            <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
+            {/* --- ACTION BUTTONS --- */}
+            <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 2 }}>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button 
+                  component={Link}
+                  to="/login"
+                  variant="text" 
+                  className="nav-secondary-btn"
+                >
+                  Personnel Access
+                </Button>
+              </motion.div>
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Button 
                   component={Link}
@@ -93,7 +103,7 @@ const Navbar = () => {
                   startIcon={<AddCircleOutlineIcon />}
                   className="nav-action-btn"
                 >
-                  Initialize New Case
+                  Initialize Case
                 </Button>
               </motion.div>
             </Box>

@@ -48,7 +48,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Mount routers
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/patients', require('./routes/patients'));
-app.use('/api/analyses', require('./routes/analyses'));
+app.use('/api/analyses', require('./routes/analysis'));
 app.use('/api/treatments', require('./routes/treatments'));
 app.use('/api/outcomes', require('./routes/outcomes'));
 app.use('/api/audit', require('./routes/audit'));
