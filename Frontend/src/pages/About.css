@@ -1,0 +1,170 @@
+.about-page-root {
+  background-color: #0B1221;
+  padding: 2rem 0 8rem 0;
+  position: relative;
+  overflow: hidden;
+  min-height: 100vh;
+}
+
+/* Background Tech Mesh */
+.about-mesh-bg {
+  position: absolute;
+  top: -100px;
+  right: -100px;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(5, 151, 137, 0.1) 0%, transparent 70%);
+  filter: blur(60px);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* --- LEFT SIDE: Narrative --- */
+
+.eyebrow-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.eyebrow-line {
+  width: 40px;
+  height: 2px;
+  background-color: #00F0FF;
+}
+
+.eyebrow-text {
+  font-family: 'Rajdhani', sans-serif !important;
+  color: #00F0FF !important;
+  letter-spacing: 2px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+}
+
+.manifesto-headline {
+  font-family: 'Space Grotesk', sans-serif !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+  line-height: 1.1 !important;
+  margin-bottom: 2rem !important;
+  font-size: 3.5rem !important;
+}
+
+.manifesto-headline .dimmed {
+  color: #94A3B8; /* Lighter grey for better visibility */
+}
+
+.manifesto-body {
+  font-family: 'Space Grotesk', sans-serif !important;
+  color: #94A3B8 !important;
+  font-size: 1.1rem !important;
+  line-height: 1.8 !important;
+  margin-bottom: 2rem !important;
+  max-width: 650px;
+}
+
+.manifesto-body strong {
+  color: #F8FAFC;
+  font-weight: 600;
+}
+
+/* Trust Badges */
+.trust-badges {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.trust-chip {
+  background-color: rgba(5, 151, 137, 0.1) !important;
+  color: #059789 !important;
+  font-family: 'Space Grotesk', sans-serif !important;
+  border: 1px solid rgba(5, 151, 137, 0.2) !important;
+}
+
+/* --- RIGHT SIDE: Live Stats --- */
+
+.stats-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%; /* Ensure full width usage */
+  align-items: flex-end; /* Align cards to the right */
+  margin-left: 90px;
+}
+
+.stat-card-wrapper {
+  perspective: 1000px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.stat-card-manifesto {
+  background-color: #162032 !important;
+  padding: 2rem;
+  background: linear-gradient(90deg, rgba(22,32,50,1) 0%, rgba(22,32,50,0.6) 100%) !important;
+  border-radius: 0 8px 8px 0 !important;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s ease, border-color 0.3s ease;
+  border: none !important;
+  cursor: default;
+  width: 100%;
+  max-width: 450px; /* Limit width so they can be 'aligned' right if container is wider */
+}
+
+.stat-card-manifesto:hover {
+  transform: translateX(10px);
+}
+
+.stat-card-manifesto.blue { border-left: 4px solid #00F0FF !important; }
+.stat-card-manifesto.teal { border-left: 4px solid #059789 !important; }
+.stat-card-manifesto.amber { border-left: 4px solid #F59E0B !important; }
+
+.stat-watermark {
+  position: absolute;
+  right: -20px;
+  bottom: -20px;
+  opacity: 0.05;
+  transform: scale(4);
+  color: #fff;
+  pointer-events: none;
+}
+
+.stat-value-text {
+  font-family: 'Rajdhani', sans-serif !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+  font-size: 2.5rem !important;
+  line-height: 1 !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.stat-label-text {
+  font-family: 'Space Grotesk', sans-serif !important;
+  color: #94A3B8 !important;
+  font-size: 1.1rem !important;
+  margin-bottom: 0.5rem !important;
+  font-weight: 500 !important;
+}
+
+.stat-sub-text {
+  font-family: 'Space Grotesk', sans-serif !important;
+  color: #64748B !important;
+  display: block;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 0.75rem;
+  font-size: 0.8rem !important;
+}
+
+@media (max-width: 900px) {
+  .manifesto-headline {
+    font-size: 2.5rem !important;
+  }
+  
+  .about-page-root {
+    padding: 4rem 0;
+  }
+}

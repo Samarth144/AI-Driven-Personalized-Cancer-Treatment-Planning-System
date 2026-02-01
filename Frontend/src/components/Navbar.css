@@ -1,75 +1,129 @@
-/* Navbar specific styles moved from global CSS */
-.navbar {
-    position: sticky;
-    top: 0;
-    z-index: var(--z-sticky);
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--glass-border);
-    padding: var(--spacing-md) 0;
+/* Navbar.css - Immersive Clinical Command Center Styles */
+
+:root {
+  --navbar-bg: transparent;
+  --navbar-glass: rgba(11, 18, 33, 0.75);
+  --navbar-text: #F8FAFC;
+  --navbar-teal: #059789;
+  --navbar-cyan: #00F0FF;
+  --navbar-border: rgba(5, 151, 137, 0.3);
+  --navbar-background-deep: #0B1221;
 }
 
-.nav-container {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
+/* AppBar / Container */
+.app-bar-root {
+  background: var(--navbar-bg) !important;
+  transition: all 0.4s ease-in-out !important;
+  z-index: 1200 !important;
+  padding: 12px 0 !important;
+  border-bottom: 1px solid transparent !important;
 }
 
-.nav-brand {
-    font-size: 1.5rem;
-    font-family: var(--font-heading);
-    font-weight: 700;
-    background: var(--gradient-primary);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    white-space: nowrap;
+.app-bar-scrolled {
+  background: var(--navbar-glass) !important;
+  backdrop-filter: blur(16px) !important;
+  padding: 4px 0 !important;
+  border-bottom: 1px solid var(--navbar-border) !important;
 }
 
-.nav-menu {
-    display: flex;
-    list-style: none;
-    gap: var(--spacing-md);
-    align-items: center;
-    flex-wrap: wrap;
-    justify-content: flex-end;
+/* Logo Section - BRANDED HARDWARE -> Rajdhani Bold Uppercase */
+.nav-logo-text {
+  font-family: 'Rajdhani', sans-serif !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: .1rem !important;
+  color: var(--navbar-text) !important;
+  text-decoration: none !important;
+  background: linear-gradient(90deg, #fff, var(--navbar-cyan)) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
 }
 
-@media (max-width: 1024px) {
-    .nav-menu {
-        gap: var(--spacing-sm);
-    }
-    .nav-link {
-        font-size: 0.9rem;
-    }
+/* Nav Links - SYSTEM SWITCHES -> Rajdhani SemiBold Uppercase */
+.nav-link-btn {
+  color: var(--navbar-text) !important;
+  font-family: 'Rajdhani', sans-serif !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  font-size: 0.95rem !important;
+  position: relative !important;
+  background-color: transparent !important;
+  transition: color 0.3s ease !important;
 }
 
-@media (max-width: 768px) {
-    .nav-menu {
-        display: none; /* Hide menu on mobile for now, or could implement hamburger */
-    }
+.nav-link-btn:hover {
+  color: var(--navbar-cyan) !important;
 }
 
-.nav-link {
-    color: var(--text-secondary);
-    font-weight: 500;
-    transition: color var(--transition-fast);
-    position: relative;
+.nav-link-btn.active {
+  color: var(--navbar-cyan) !important;
 }
 
-.nav-link:hover,
-.nav-link.active {
-    color: var(--primary-blue);
+.nav-link-btn::after {
+  content: "";
+  position: absolute;
+  width: 0%;
+  height: 2px;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--navbar-cyan);
+  transition: width 0.3s ease;
 }
 
-.nav-link.active::after {
-    content: '';
-    position: absolute;
-    bottom: -0.5rem;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: var(--gradient-primary);
+.nav-link-btn.active::after {
+  width: 100%;
+}
+
+.nav-link-btn:hover::after {
+  width: 100%;
+}
+
+/* Action Button - CALL TO ACTION -> Space Grotesk Bold */
+.nav-action-btn {
+  font-family: 'Space Grotesk', sans-serif !important;
+  font-weight: 700 !important;
+  border-color: var(--navbar-teal) !important;
+  color: var(--navbar-teal) !important;
+  border-radius: 20px !important;
+  padding: 6px 20px !important;
+  text-transform: none !important; /* Keep buttons sentence case or user pref, usually Space Grotesk buttons are standard case */
+  background-color: rgba(5, 151, 137, 0.05) !important;
+  transition: all 0.3s ease !important;
+}
+
+.nav-action-btn:hover {
+  border-color: var(--navbar-cyan) !important;
+  color: var(--navbar-cyan) !important;
+  background-color: rgba(0, 240, 255, 0.1) !important;
+  box-shadow: 0 0 15px var(--navbar-teal) !important;
+}
+
+/* Mobile Drawer */
+.mobile-drawer-paper {
+  background-color: var(--navbar-background-deep) !important;
+  color: var(--navbar-text) !important;
+  border-left: 1px solid var(--navbar-border) !important;
+  width: 250px !important;
+}
+
+.mobile-nav-item-btn {
+  text-align: center !important;
+  transition: background-color 0.3s ease !important;
+}
+
+.mobile-nav-item-btn:hover {
+  background-color: rgba(5, 151, 137, 0.1) !important;
+}
+
+.mobile-action-btn {
+  background-color: var(--navbar-teal) !important;
+  font-family: 'Space Grotesk', sans-serif !important;
+  font-weight: 700 !important;
+  transition: background-color 0.3s ease !important;
+}
+
+.mobile-action-btn:hover {
+  background-color: var(--navbar-cyan) !important;
 }

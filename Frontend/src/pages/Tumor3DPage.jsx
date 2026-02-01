@@ -1,18 +1,16 @@
 import React from 'react';
-import Navbar from '../components/Navbar';
-import TumorViewer from '../components/TumorViewer';
 import { Link } from 'react-router-dom';
+import TumorViewer from '../components/TumorViewer';
 import '../components/Tumor3D.css';
 
 function Tumor3DPage() {
   return (
     <>
-      <Navbar />
-      <div className="container" style={{ padding: '2rem' }}>
+      <div className="viewer-container">
         <div className="page-header flex justify-between items-center mb-xl">
           <div>
             <h1>3D Tumor Visualization</h1>
-            <p className="text-secondary">Interactive WebGL-based brain and tumor model</p>
+            <p className="text-secondary">Interactive WebGL-based cancer and tumor model</p>
           </div>
           <div className="flex gap-sm">
             <button className="btn btn-outline">Reset View</button>

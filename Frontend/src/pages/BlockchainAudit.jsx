@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Navbar from '../components/Navbar';
 import './BlockchainAudit.css';
 
 function BlockchainAudit() {
@@ -82,7 +81,6 @@ function BlockchainAudit() {
 
   return (
     <>
-      <Navbar />
       <div className="container blockchain-container">
         {/* Header */}
         <div className="blockchain-header">

@@ -1,26 +1,10 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Navbar from '../components/Navbar';
+import React from 'react';
 import './PathwaySimulator.css';
 
 function PathwaySimulator() {
-  const navigate = useNavigate();
-  const [activeScenario, setActiveScenario] = useState('standard');
-
-  const handleScenarioSelect = (scenario) => {
-    setActiveScenario(scenario);
-    // In a real app, this would trigger a data update or recalculation
-    // For now, it just updates the UI state as per the simulation
-  };
-
-  const printPathway = () => {
-    window.print();
-  };
-
   return (
     <>
-      <Navbar />
-      <div className="container simulator-container">
+      <div className="pathway-header">
         <div className="text-center mb-xl">
           <h1>Interactive Treatment Pathway Simulator</h1>
           <p className="text-secondary">Explore different treatment scenarios and compare outcomes</p>

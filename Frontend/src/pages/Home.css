@@ -13,54 +13,195 @@
 /* Hero Section */
 .hero {
   position: relative;
+  width: 100%;
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  /* --- THE BACKGROUND MAGIC --- */
+  background-image: 
+    linear-gradient(
+      to bottom, 
+      rgba(11, 18, 33, 0.7) 0%,   /* Glass Navy at top */
+      rgba(11, 18, 33, 0.9) 70%,  /* Darker towards bottom */
+      #0B1221 100%                /* Solid Void Navy at bottom */
+    ),
+    url('/hero_bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed; /* Parallax effect */
 }
 
-.hero-bg {
+/* Subtle Grid Overlay */
+.hero-grid-overlay {
   position: absolute;
-  inset: 0;
-  background: var(--gradient-mesh);
-  opacity: 0.4;
-  z-index: -1;
-  animation: meshMove 20s ease-in-out infinite;
-}
-
-@keyframes meshMove {
-  0%, 100% { transform: scale(1) rotate(0deg); }
-  50% { transform: scale(1.1) rotate(5deg); }
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(rgba(5, 151, 137, 0.1) 1px, transparent 1px), 
+    linear-gradient(90deg, rgba(5, 151, 137, 0.1) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.2;
+  z-index: 1;
+  -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+  pointer-events: none;
 }
 
 .hero-content {
+  position: relative;
   text-align: center;
-  max-width: 900px;
+  max-width: 1200px;
   padding: 2rem;
-  z-index: 1;
+  z-index: 2;
   margin: 0 auto;
 }
 
-.hero-title {
-  font-size: clamp(2.5rem, 6vw, 4.5rem);
-  margin-bottom: 1.5rem;
-  animation: fadeInUp 0.8s ease-out;
+.hero-title-box {
+  text-align: center;
+  max-width: 1150px;
+  margin: 0 auto;
 }
 
-.hero-subtitle {
-  font-size: clamp(1.125rem, 2vw, 1.5rem);
-  color: var(--text-secondary);
-  margin-bottom: 3rem;
-  animation: fadeInUp 0.8s ease-out 0.2s both;
+.hero-title-text {
+  font-family: 'Space Grotesk', sans-serif !important;
+  font-weight: 800 !important;
+  text-transform: capitalize;
+  background: linear-gradient(90deg, #F8FAFC 0%, #00F0FF 50%, #059789 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 20px rgba(0, 240, 255, 0.3));
+  line-height: 1.1 !important;
+  margin-bottom: 1.5rem !important;
+  font-size: 4rem !important;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (max-width: 768px) {
+  .hero-title-text {
+    font-size: 2.8rem !important;
+  }
+}
+
+.hero-subtitle-text {
+  font-family: 'Space Grotesk', sans-serif !important;
+  font-weight: 400 !important;
+  color: #94A3B8;
+  line-height: 1.6 !important;
+  max-width: 850px;
+  margin: 0 auto;
+  font-size: 1.25rem;
+}
+
+.hero-subtitle-highlight-tech {
+  color: #00F0FF;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.hero-subtitle-highlight-clinical {
+  color: #F8FAFC;
+  border-bottom: 1px solid #059789;
 }
 
 .hero-cta {
   display: flex;
-  gap: 1rem;
+  gap: 2rem;
   justify-content: center;
   flex-wrap: wrap;
   animation: fadeInUp 0.8s ease-out 0.4s both;
+  margin-top: 4rem;
+}
+
+/* Button 1: THE "SCANNER" (Primary Action) */
+.btn-scanner {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(90deg, #059789 0%, #00F0FF 100%) !important;
+  color: #0B1221 !important;
+  padding: 14px 32px !important;
+  font-size: 1rem !important;
+  font-family: 'Space Grotesk', sans-serif !important;
+  font-weight: 700 !important;
+  border-radius: 2px !important;
+  clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.btn-scanner::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  transition: left 0.5s ease;
+}
+
+.btn-scanner:hover::before {
+  left: 100%;
+}
+
+/* Button 2: THE "HUD LINK" (Secondary Action) */
+.btn-hud {
+  background: rgba(5, 151, 137, 0.1) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 240, 255, 0.3) !important;
+  color: #F8FAFC !important;
+  padding: 14px 32px !important;
+  font-size: 1rem !important;
+  font-family: 'Rajdhani', sans-serif !important;
+  font-weight: 600 !important;
+  letter-spacing: 1px !important;
+  text-transform: uppercase !important;
+  border-radius: 2px !important;
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-hud:hover {
+  background: rgba(0, 240, 255, 0.15) !important;
+  border-color: #00F0FF !important;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.3) !important;
+}
+
+.hud-bracket {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  pointer-events: none;
+}
+
+.hud-bracket-tl {
+  top: 0;
+  left: 0;
+  border-top: 2px solid #00F0FF;
+  border-left: 2px solid #00F0FF;
+}
+
+.hud-bracket-br {
+  bottom: 0;
+  right: 0;
+  border-bottom: 2px solid #00F0FF;
+  border-right: 2px solid #00F0FF;
 }
 
 /* Feature Grid */
@@ -103,8 +244,6 @@
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   border-color: var(--primary-blue);
 }
-
-/* Feature Icon replaced by icon-circle in JSX */
 
 /* Stats Section */
 .stats-section {

@@ -1,6 +1,6 @@
-# NeuroOnco AI - AI-Driven Personalized Cancer Treatment Planning System
+# RESONANCE - AI-Driven Personalized Cancer Treatment Planning System
 
-A comprehensive full-stack application for personalized brain tumor treatment planning using multimodal AI analysis.
+A comprehensive full-stack application for personalized cancer treatment planning using multimodal AI analysis.
 
 ## 🚀 Features
 

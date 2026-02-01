@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import Navbar from '../components/Navbar';
 import './Dashboard.css';
 
 function Dashboard() {
@@ -15,8 +14,6 @@ function Dashboard() {
 
   return (
     <>
-      <Navbar />
-      
       {/* Dashboard Header */}
       <div className="dashboard-header">
         <div className="container">

@@ -34,51 +34,103 @@ function TreatmentPlan() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [treatmentData, setTreatmentData] = useState(null);
+  const [evidence, setEvidence] = useState([]);
+  const [cancerType, setCancerType] = useState('Breast');
+  const [patientData, setPatientData] = useState({
+    stage: '0',
+    ER: 'positive',
+    PR: 'positive',
+    HER2: 'positive',
+    BRCA: 'positive',
+    PDL1: 'low',
+    residual: 'yes',
+  });
 
-  // Helper to generate mock data matching app.js logic
-  const generateMockTreatmentData = () => {
-    // Protocol options
-    const protocols = ['Surgery + RT + TMZ', 'Surgery + RT', 'RT + TMZ', 'Watchful Waiting'];
-    const selectedProtocol = protocols[Math.floor(Math.random() * protocols.length)];
-
-    return {
-      recommendedProtocol: selectedProtocol,
-      confidence: (Math.random() * 15 + 85).toFixed(1),
-      description: 'Based on comprehensive multimodal analysis',
-      guidelineAlignment: ['NCCN', 'EANO'][Math.floor(Math.random() * 2)],
-      alternativeOptions: [
-        { protocol: 'Surgery + RT', confidence: (Math.random() * 20 + 70).toFixed(1) },
-        { protocol: 'RT + TMZ', confidence: (Math.random() * 20 + 60).toFixed(1) }
-      ]
-    };
+  const getInitialPatientData = (cancer) => {
+    switch (cancer) {
+      case 'Brain':
+        return { stage: 'LOCALIZED', MGMT: 'methylated', IDH: 'mutant', Resection: 'complete' };
+      case 'Lung':
+        return { stage: 'I', EGFR: 'positive', ALK: 'positive', PDL1: '<1%' };
+      case 'Liver':
+        return { stage: 'EARLY', AFP: 'normal', Cirrhosis: 'yes' };
+      case 'Pancreas':
+        return { stage: 'RESECTABLE', 'CA19-9': 'normal', BRCA: 'positive' };
+      case 'Breast':
+      default:
+        return { stage: '0', ER: 'positive', PR: 'positive', HER2: 'positive', BRCA: 'positive', PDL1: 'low', residual: 'yes' };
+    }
   };
 
-  const generateTreatmentPlan = async () => {
+  const handleCancerTypeChange = (e) => {
+    const newCancerType = e.target.value;
+    setCancerType(newCancerType);
+    setPatientData(getInitialPatientData(newCancerType));
+  };
+
+  const handlePatientDataChange = (e) => {
+    const { name, value } = e.target;
+    setPatientData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
+
+  const generateTreatmentPlan = async (e) => {
+    e.preventDefault();
+    const fullPatientData = { cancer_type: cancerType.toLowerCase(), ...patientData };
+    console.log("Generating plan for:", fullPatientData);
+
     setLoading(true);
-    // Simulate AI processing
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    const data = generateMockTreatmentData();
-    setTreatmentData(data);
-    setLoading(false);
+    setTreatmentData(null);
+    setEvidence([]);
+
+    try {
+      const response = await fetch('http://127.0.0.1:5000/recommend', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(fullPatientData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("Raw backend response:", result);
+
+      const { plan, evidence } = result;
+
+      const lines = plan.split('\n');
+      const protocolLine = lines.find(line => line.toLowerCase().includes('primary recommended treatment'));
+      const recommendedProtocol = protocolLine ? protocolLine.replace(/\*\*Primary recommended treatment:\*\*/i, '').trim() : 'See plan details';
+
+      const adaptedData = {
+        recommendedProtocol: recommendedProtocol,
+        confidence: 95.5, // Using a static confidence for now
+        description: plan,
+        guidelineAlignment: 'AI-Generated',
+        alternativeOptions: []
+      };
+
+      setTreatmentData(adaptedData);
+      setEvidence(evidence || []);
+
+    } catch (error) {
+      console.error("Failed to generate treatment plan:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Initial load simulation
   useEffect(() => {
-    // Start with the specific example data requested
-    const initialData = {
-        recommendedProtocol: 'Surgery + RT + TMZ',
-        confidence: 87.9,
-        description: 'Based on comprehensive multimodal analysis',
-        guidelineAlignment: 'NCCN',
-        alternativeOptions: [
-            // These are just placeholders to structure the comparison loop
-            // The comparison list is hardcoded below to match the specific request content
-            { protocol: 'Surgery + RT', confidence: 85.3 },
-            { protocol: 'RT + TMZ', confidence: 60.6 }
-        ]
-    };
-    setTreatmentData(initialData);
+    const initialEvidence = [
+        { source: 'NCCN-Initial', text: 'Default NCCN guidelines for brain tumors recommend...' },
+        { source: 'EANO-Initial', text: 'Default EANO guidelines suggest...' }
+    ];
+    setEvidence(initialEvidence);
   }, []);
 
 
@@ -96,19 +148,8 @@ function TreatmentPlan() {
   const factorsChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    scales: {
-      r: {
-        beginAtZero: true,
-        max: 100,
-        ticks: { color: '#94A3B8', backdropColor: 'transparent' },
-        grid: { color: 'rgba(255, 255, 255, 0.05)' },
-        angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
-        pointLabels: { color: '#F8FAFC', font: { size: 12 } }
-      }
-    },
-    plugins: {
-      legend: { labels: { color: '#94A3B8' } }
-    }
+    scales: { r: { beginAtZero: true, max: 100, ticks: { color: 'hsl(0, 0%, 75%)' }, grid: { color: 'hsla(0, 0%, 100%, 0.05)' }, pointLabels: { color: 'hsl(0, 0%, 75%)' } } },
+    plugins: { legend: { labels: { color: 'hsl(0, 0%, 75%)' } } }
   };
 
   const timelineChartData = {
@@ -116,13 +157,7 @@ function TreatmentPlan() {
     datasets: [{
       label: 'Duration (weeks)',
       data: [2, 4, 6, 24, 52],
-      backgroundColor: [
-        '#5B6FF6',
-        '#21D4BD',
-        '#7C5CFF',
-        '#3B82F6',
-        '#22C55E'
-      ],
+      backgroundColor: ['hsla(210, 100%, 56%, 0.8)', 'hsla(180, 65%, 55%, 0.8)', 'hsla(270, 70%, 60%, 0.8)', 'hsla(190, 85%, 65%, 0.8)', 'hsla(142, 70%, 55%, 0.8)'],
       borderRadius: 8
     }]
   };
@@ -131,223 +166,141 @@ function TreatmentPlan() {
     indexAxis: 'y',
     responsive: true,
     maintainAspectRatio: false,
-    scales: {
-      x: {
-        ticks: { color: '#94A3B8' },
-        grid: { color: 'rgba(255, 255, 255, 0.05)' }
-      },
-      y: {
-        ticks: { color: '#94A3B8' },
-        grid: { color: 'rgba(255, 255, 255, 0.05)' }
-      }
-    },
-    plugins: {
-      legend: { labels: { color: '#94A3B8' } }
-    }
+    scales: { x: { ticks: { color: 'hsl(0, 0%, 75%)' }, grid: { color: 'hsla(0, 0%, 100%, 0.05)' } }, y: { ticks: { color: 'hsl(0, 0%, 75%)' }, grid: { color: 'hsla(0, 0%, 100%, 0.05)' } } },
+    plugins: { legend: { labels: { color: 'hsl(0, 0%, 75%)' } } }
   };
 
-  // Construct protocol comparison list based on current data
   const protocols = useMemo(() => {
     if (!treatmentData) return [];
-    
-    // Logic to build the list dynamically based on the random generation
-    // but prioritizing the specific content structure requested
-    const list = [
-        {
-            name: treatmentData.recommendedProtocol,
-            score: treatmentData.confidence,
-            duration: '12-18 months',
-            efficacy: 'High',
-            toxicity: 'Moderate',
-            cost: 'High',
-            recommended: true
-        }
-    ];
-
-    // Add alternatives (mock logic to match the 3 extra cards)
-    if (treatmentData.recommendedProtocol === 'Surgery + RT + TMZ') {
-         list.push(
-            { name: 'Surgery + RT', score: 85.3, duration: '6-12 months', efficacy: 'Moderate', toxicity: 'Low-Moderate', cost: 'Moderate', recommended: false },
-            { name: 'RT + TMZ', score: 60.6, duration: '6-12 months', efficacy: 'Moderate', toxicity: 'Low-Moderate', cost: 'Moderate', recommended: false },
-            { name: 'Watchful Waiting', score: 45.2, duration: 'Ongoing', efficacy: 'N/A', toxicity: 'None', cost: 'Low', recommended: false }
-         );
-    } else {
-        // Fallback for random generation to keep the grid populated
-        list.push(
-            { name: 'Alternative Protocol A', score: (Math.random() * 20 + 60).toFixed(1), duration: '6-12 months', efficacy: 'Moderate', toxicity: 'Moderate', cost: 'Moderate', recommended: false },
-            { name: 'Alternative Protocol B', score: (Math.random() * 20 + 40).toFixed(1), duration: 'Varies', efficacy: 'Low', toxicity: 'Low', cost: 'Low', recommended: false },
-             { name: 'Watchful Waiting', score: 45.2, duration: 'Ongoing', efficacy: 'N/A', toxicity: 'None', cost: 'Low', recommended: false }
-        );
-    }
-    
+    const list = [{
+        name: treatmentData.recommendedProtocol,
+        score: treatmentData.confidence,
+        duration: '12-18 months',
+        efficacy: 'High',
+        toxicity: 'Moderate',
+        cost: 'High',
+        recommended: true
+    }];
+    // This part can be enhanced to parse alternatives from the AI response
+    list.push(
+        { name: 'Alternative Protocol A', score: 85.3, duration: '6-12 months', efficacy: 'Moderate', toxicity: 'Low-Moderate', cost: 'Moderate', recommended: false },
+        { name: 'Alternative Protocol B', score: 60.6, duration: '6-12 months', efficacy: 'Moderate', toxicity: 'Low-Moderate', cost: 'Moderate', recommended: false },
+        { name: 'Watchful Waiting', score: 45.2, duration: 'Ongoing', efficacy: 'N/A', toxicity: 'None', cost: 'Low', recommended: false }
+    );
     return list;
   }, [treatmentData]);
 
+  const renderBreastInputs = () => (
+    <>
+      <div className="form-group"><label>Stage</label><select name="stage" value={patientData.stage} onChange={handlePatientDataChange}>{['0', 'I', 'II', 'III', 'IV'].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+      <div className="form-group"><label>ER</label><select name="ER" value={patientData.ER} onChange={handlePatientDataChange}>{['positive', 'negative'].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+      <div className="form-group"><label>PR</label><select name="PR" value={patientData.PR} onChange={handlePatientDataChange}>{['positive', 'negative'].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+      <div className="form-group"><label>HER2</label><select name="HER2" value={patientData.HER2} onChange={handlePatientDataChange}>{['positive', 'negative'].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+      <div className="form-group"><label>BRCA</label><select name="BRCA" value={patientData.BRCA} onChange={handlePatientDataChange}>{['positive', 'negative'].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+      <div className="form-group"><label>PD-L1</label><select name="PDL1" value={patientData.PDL1} onChange={handlePatientDataChange}>{['low', '>=10', '>=50', 'unknown'].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+      <div className="form-group"><label>Residual disease</label><select name="residual" value={patientData.residual} onChange={handlePatientDataChange}>{['yes', 'no'].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+    </>
+  );
+
+  const renderBrainInputs = () => (
+    <>
+      <div className="form-group"><label>WHO Grade</label><select name="stage" value={patientData.stage} onChange={handlePatientDataChange}>{['LOCALIZED', 'RECURRENT'].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+      <div className="form-group"><label>MGMT Methylation</label><select name="MGMT" value={patientData.MGMT} onChange={handlePatientDataChange}>{['methylated', 'unmethylated'].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+      <div className="form-group"><label>IDH Status</label><select name="IDH" value={patientData.IDH} onChange={handlePatientDataChange}>{['mutant', 'wild-type'].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+      <div className="form-group"><label>Resection Status</label><select name="Resection" value={patientData.Resection} onChange={handlePatientDataChange}>{['complete', 'partial', 'biopsy'].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+    </>
+  );
+
+  const renderLungInputs = () => (
+    <>
+        <div className="form-group"><label>Stage</label><select name="stage" value={patientData.stage} onChange={handlePatientDataChange}>{['I', 'II', 'III', 'IV'].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+        <div className="form-group"><label>EGFR</label><select name="EGFR" value={patientData.EGFR} onChange={handlePatientDataChange}>{['positive', 'negative'].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+        <div className="form-group"><label>ALK</label><select name="ALK" value={patientData.ALK} onChange={handlePatientDataChange}>{['positive', 'negative'].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+        <div className="form-group"><label>PD-L1</label><select name="PDL1" value={patientData.PDL1} onChange={handlePatientDataChange}>{['<1%', '1-49%', '>=50%'].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+    </>
+  );
+
+  const renderLiverInputs = () => (
+    <>
+        <div className="form-group"><label>BCLC Stage</label><select name="stage" value={patientData.stage} onChange={handlePatientDataChange}>{['EARLY', 'INTERMEDIATE', 'ADVANCED'].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+        <div className="form-group"><label>AFP Levels</label><select name="AFP" value={patientData.AFP} onChange={handlePatientDataChange}>{['normal', 'elevated'].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+        <div className="form-group"><label>Cirrhosis</label><select name="Cirrhosis" value={patientData.Cirrhosis} onChange={handlePatientDataChange}>{['yes', 'no'].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+    </>
+  );
+
+    const renderPancreasInputs = () => (
+    <>
+        <div className="form-group"><label>Stage</label><select name="stage" value={patientData.stage} onChange={handlePatientDataChange}>{['RESECTABLE', 'LOCALLY_ADVANCED', 'METASTATIC'].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+        <div className="form-group"><label>CA19-9</label><select name="CA19-9" value={patientData['CA19-9']} onChange={handlePatientDataChange}>{['normal', 'elevated'].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+        <div className="form-group"><label>BRCA</label><select name="BRCA" value={patientData.BRCA} onChange={handlePatientDataChange}>{['positive', 'negative'].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+    </>
+    );
 
   return (
     <>
       <Navbar />
       <div className="container" style={{ paddingTop: 'var(--spacing-2xl)', paddingBottom: 'var(--spacing-3xl)' }}>
         <div className="flex justify-between items-center mb-xl">
-          <div>
-            <h1>AI-Recommended Treatment Plan</h1>
-            <p className="text-secondary">Evidence-based protocol optimization using multimodal data</p>
-          </div>
-          <button className="btn btn-primary" onClick={generateTreatmentPlan} disabled={loading}>
-            {loading ? 'Generating...' : '🎯 Generate Plan'}
-          </button>
+          <div><h1>AI-Recommended Treatment Plan</h1><p className="text-secondary">Evidence-based protocol optimization using multimodal data</p></div>
         </div>
+
+        <div className="card-glass mb-xl">
+            <h3 className="mb-lg">Treatment Optimization Engine</h3>
+            <form onSubmit={generateTreatmentPlan}>
+                <div className="form-group"><label>Select Cancer Type</label><select value={cancerType} onChange={handleCancerTypeChange}>{['Breast', 'Brain', 'Lung', 'Liver', 'Pancreas'].map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+                <div className="grid-dynamic">
+                    {cancerType === 'Breast' && renderBreastInputs()}
+                    {cancerType === 'Brain' && renderBrainInputs()}
+                    {cancerType === 'Lung' && renderLungInputs()}
+                    {cancerType === 'Liver' && renderLiverInputs()}
+                    {cancerType === 'Pancreas' && renderPancreasInputs()}
+                </div>
+                <button type="submit" className="btn btn-primary mt-lg" disabled={loading} style={{width: '100%'}}>{loading ? 'Generating...' : '🎯 Generate Plan'}</button>
+            </form>
+        </div>
+
+        {loading && <div className="text-center text-secondary">Loading... The AI is thinking.</div>}
 
         {treatmentData && (
         <div className="recommendation-card" id="primaryRecommendation">
             <div className="flex justify-between items-start">
                 <div>
-                    <span className="badge badge-recommended">RECOMMENDED</span>
+                    <span className="badge" style={{ background: 'white', color: 'var(--bg-primary)' }}>RECOMMENDED</span>
                     <h2 className="mt-md">{treatmentData.recommendedProtocol}</h2>
-                    <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '1.125rem' }}>
+                    <p style={{ whiteSpace: 'pre-wrap', color: 'rgba(255,255,255,0.9)', fontSize: '1.125rem' }}>
                         {treatmentData.description}
                     </p>
                 </div>
-                <div className="guideline-badge guideline-badge-themed">
-                    <span>📋</span>
-                    <span>{treatmentData.guidelineAlignment}</span>
-                </div>
+                <div className="guideline-badge" style={{ background: 'white', color: 'var(--bg-primary)' }}><span>📋</span><span>{treatmentData.guidelineAlignment}</span></div>
             </div>
-
-            <div className="confidence-meter">
-                <div 
-                    className="confidence-fill confidence-fill-themed" 
-                    style={{ 
-                        width: loading ? '0%' : `${treatmentData.confidence}%`
-                    }}
-                >
-                    {loading ? '' : `${treatmentData.confidence}% Confidence`}
-                </div>
-            </div>
+            <div className="confidence-meter"><div className="confidence-fill" style={{ width: loading ? '0%' : `${treatmentData.confidence}%` }}>{loading ? '' : `${treatmentData.confidence}% Confidence`}</div></div>
         </div>
         )}
 
-        {/* Protocol Comparison */}
         <h3 className="mb-lg">Treatment Protocol Comparison</h3>
-        <div className="protocol-comparison">
-            {loading ? (
-                 <div className="text-secondary">Updating protocols...</div>
-            ) : (
-                protocols.map((p, index) => (
-                    <div key={index} className={`protocol-card ${p.recommended ? 'recommended' : ''}`}>
-                        <div className="protocol-header">
-                            <h4>{p.name}</h4>
-                            {p.recommended && <span className="badge badge-success">RECOMMENDED</span>}
-                        </div>
-                        
-                        <div className="protocol-score">{p.score}%</div>
-                        <p className="text-secondary">Confidence Score</p>
-                        
-                        <ul className="protocol-details">
-                            <li>
-                            <span className="text-secondary">Duration</span>
-                            <strong>{p.duration}</strong>
-                            </li>
-                            <li>
-                            <span className="text-secondary">Efficacy</span>
-                            <strong>{p.efficacy}</strong>
-                            </li>
-                            <li>
-                            <span className="text-secondary">Toxicity</span>
-                            <strong>{p.toxicity}</strong>
-                            </li>
-                            <li>
-                            <span className="text-secondary">Cost</span>
-                            <strong>{p.cost}</strong>
-                            </li>
-                        </ul>
-                    </div>
-                ))
-            )}
-        </div>
+        <div className="protocol-comparison">{protocols.map((p, index) => (<div key={index} className={`protocol-card ${p.recommended ? 'recommended' : ''}`}><div className="protocol-header"><h4>{p.name}</h4>{p.recommended && <span className="badge badge-success">RECOMMENDED</span>}</div><div className="protocol-score">{p.score}%</div><p className="text-secondary">Confidence Score</p><ul className="protocol-details"><li><span className="text-secondary">Duration</span><strong>{p.duration}</strong></li><li><span className="text-secondary">Efficacy</span><strong>{p.efficacy}</strong></li><li><span className="text-secondary">Toxicity</span><strong>{p.toxicity}</strong></li><li><span className="text-secondary">Cost</span><strong>{p.cost}</strong></li></ul></div>))}</div>
 
-        {/* Evidence Base */}
         <div className="grid-2 mb-xl">
             <div className="card-glass">
                 <h3>Evidence Base & Guidelines</h3>
-                <div className="evidence-section">
-                    <h4>NCCN Guidelines Alignment</h4>
-                    <p className="text-secondary">National Comprehensive Cancer Network recommendations for brain tumors</p>
-                    <div className="mt-md">
-                        <span className="badge badge-success">✓ Aligned</span>
-                        <span className="text-secondary ml-sm">Grade 1 Evidence</span>
-                    </div>
-                </div>
-
-                <div className="evidence-section">
-                    <h4>EANO Guidelines Alignment</h4>
-                    <p className="text-secondary">European Association of Neuro-Oncology clinical practice guidelines</p>
-                    <div className="mt-md">
-                        <span className="badge badge-success">✓ Aligned</span>
-                        <span className="text-secondary ml-sm">Strong Recommendation</span>
-                    </div>
-                </div>
+                {evidence && evidence.length > 0 ? (
+                    evidence.map((e, index) => (
+                        <div key={index} className="evidence-section">
+                            <h4>{e.source}</h4>
+                            <p className="text-secondary">{e.text}</p>
+                        </div>
+                    ))
+                ) : (
+                    <p className="text-secondary">No evidence retrieved.</p>
+                )}
             </div>
 
-            <div className="card-glass">
-                <h3>Key Decision Factors</h3>
-                <div style={{ height: '300px' }}>
-                    <Radar data={factorsChartData} options={factorsChartOptions} />
-                </div>
-            </div>
+            <div className="card-glass"><h3>Key Decision Factors</h3><div style={{ height: '300px' }}><Radar data={factorsChartData} options={factorsChartOptions} /></div></div>
         </div>
 
-        {/* Treatment Timeline */}
-        <div className="card-glass mb-xl">
-            <h3>Proposed Treatment Timeline</h3>
-            <p className="text-secondary mb-lg">Estimated treatment phases and duration</p>
-
-            <div style={{ height: '250px' }}>
-                <Bar data={timelineChartData} options={timelineChartOptions} />
-            </div>
-        </div>
-
-        {/* Supporting Data */}
-        <div className="card-glass mb-xl">
-            <h3>Multimodal Data Integration</h3>
-            <p className="text-secondary mb-lg">How different data sources contributed to this recommendation</p>
-
-            <div className="grid-3">
-                <div className="stat-card">
-                    <div className="stat-label">MRI Analysis</div>
-                    <div className="stat-value stat-value-sm">High Impact</div>
-                    <p className="text-secondary stat-desc">Tumor volume and location</p>
-                </div>
-
-                <div className="stat-card">
-                    <div className="stat-label">Genomic Profile</div>
-                    <div className="stat-value stat-value-sm">Critical</div>
-                    <p className="text-secondary stat-desc">MGMT methylation status</p>
-                </div>
-
-                <div className="stat-card">
-                    <div className="stat-label">Clinical History</div>
-                    <div className="stat-value stat-value-sm">Moderate</div>
-                    <p className="text-secondary stat-desc">Performance status</p>
-                </div>
-            </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-md justify-center">
-            <button className="btn btn-secondary" onClick={() => navigate('/genomic-analysis')}>
-                ← Back to Genomic Analysis
-            </button>
-            <button className="btn btn-primary" onClick={() => navigate('/outcome-prediction')}>
-                View Outcome Predictions →
-            </button>
-            <button className="btn btn-outline" onClick={() => navigate('/pathway-simulator')}>
-                Simulate Treatment Pathway
-            </button>
-            <button className="btn btn-outline" onClick={() => navigate('/explainability')}>
-                View AI Explanation
-            </button>
-        </div>
+        <div className="card-glass mb-xl"><h3>Proposed Treatment Timeline</h3><p className="text-secondary mb-lg">Estimated treatment phases and duration</p><div style={{ height: '250px' }}><Bar data={timelineChartData} options={timelineChartOptions} /></div></div>
+        <div className="card-glass mb-xl"><h3>Multimodal Data Integration</h3><p className="text-secondary mb-lg">How different data sources contributed to this recommendation</p><div className="grid-3"><div className="stat-card"><div className="stat-label">MRI Analysis</div><div className="stat-value" style={{ fontSize: '1.5rem' }}>High Impact</div><p className="text-secondary" style={{ fontSize: '0.875rem' }}>Tumor volume and location</p></div><div className="stat-card"><div className="stat-label">Genomic Profile</div><div className="stat-value" style={{ fontSize: '1.5rem' }}>Critical</div><p className="text-secondary" style={{ fontSize: '0.875rem' }}>MGMT methylation status</p></div><div className="stat-card"><div className="stat-label">Clinical History</div><div className="stat-value" style={{ fontSize: '1.5rem' }}>Moderate</div><p className="text-secondary" style={{ fontSize: '0.875rem' }}>Performance status</p></div></div></div>
+        <div className="flex gap-md justify-center"><button className="btn btn-secondary" onClick={() => navigate('/genomic-analysis')}>← Back to Genomic Analysis</button><button className="btn btn-primary" onClick={() => navigate('/outcome-prediction')}>View Outcome Predictions →</button><button className="btn btn-outline" onClick={() => navigate('/pathway-simulator')}>Simulate Treatment Pathway</button><button className="btn btn-outline" onClick={() => navigate('/explainability')}>View AI Explanation</button></div>
       </div>
     </>
   );

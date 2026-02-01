@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Navbar from '../components/Navbar';
 import './MRIAnalysis.css';
 import { Chart as ChartJS, RadialLinearScale, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { Radar, Bar, Line } from 'react-chartjs-2';
@@ -64,8 +63,7 @@ function MRIAnalysis() {
 
   return (
     <>
-      <Navbar />
-      <div className="container page-container">
+      <div className="container mri-container">
         <div className="page-header mb-xl flex justify-between items-center">
           <div>
             <h1>MRI Segmentation & Radiomics Analysis</h1>

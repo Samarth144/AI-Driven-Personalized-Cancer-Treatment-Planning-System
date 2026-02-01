@@ -10,13 +10,19 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.7",
+    "@mui/material": "^7.3.7",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "chart.js": "^4.5.1",
+    "framer-motion": "^12.29.2",
     "react": "^19.2.0",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.0",
+    "react-router-hash-link": "^2.4.3",
     "three": "^0.182.0"
   },
   "devDependencies": {

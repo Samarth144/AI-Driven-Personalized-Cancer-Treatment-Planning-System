@@ -1,0 +1,182 @@
+.tech-carousel-section {
+  padding: 4rem 0;
+  position: relative;
+  overflow: hidden;
+  background-color: transparent;
+}
+
+.tech-carousel-title {
+  font-family: 'Rajdhani', sans-serif !important;
+  font-weight: 700 !important;
+  color: #F8FAFC !important;
+  margin-bottom: 3rem !important;
+  text-transform: uppercase;
+  letter-spacing: 2px !important;
+  border-bottom: 1px solid #059789;
+  display: inline-block;
+  padding-bottom: 0.5rem;
+}
+
+.tech-carousel-subtitle {
+  font-family: 'Space Grotesk', sans-serif !important;
+  color: #94A3B8 !important;
+  text-align: center;
+  margin-bottom: 2rem !important;
+  max-width: 800px;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  font-size: 0.95rem !important;
+  opacity: 0.8;
+}
+
+.tech-carousel-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  min-height: 400px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.tech-carousel-nav-btn {
+  color: #00F0FF !important;
+  border: 1px solid rgba(0, 240, 255, 0.3) !important;
+  background: rgba(0, 240, 255, 0.05) !important;
+  transition: all 0.3s ease !important;
+  z-index: 10;
+}
+
+.tech-carousel-nav-btn:hover {
+  background: rgba(0, 240, 255, 0.15) !important;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+}
+
+.tech-carousel-content-wrapper {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  /* gap is removed or negative for the overlap effect */
+  justify-content: center;
+}
+
+.tech-carousel-content-wrapper.reverse {
+  flex-direction: row-reverse;
+}
+
+/* --- NEURAL LINK STYLES --- */
+
+/* 1. THE IMAGE (Orb/Node) */
+.neural-image-wrapper {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+}
+
+.neural-image {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid #0B1221; /* Matches bg to cut line */
+  box-shadow: 0 0 30px rgba(5, 151, 137, 0.4);
+  display: block;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+.neural-spin-ring {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  right: -10px;
+  bottom: -10px;
+  border-radius: 50%;
+  border: 1px dashed #00F0FF;
+  animation: spin 10s infinite linear;
+}
+
+/* 2. THE CONNECTING LINE (The Wire) */
+.neural-connect-line {
+  flex: 1; /* Grow to fill space */
+  height: 2px;
+  background: linear-gradient(90deg, #059789, #00F0FF);
+  margin-left: -20px; /* Overlap with image */
+  margin-right: -20px; /* Overlap with text box */
+  z-index: 1;
+  min-width: 50px; /* Minimum connector length */
+}
+
+/* 3. THE TEXT (Data Node) */
+.neural-text-wrapper {
+  flex: 2; /* Text takes more space */
+  position: relative;
+  z-index: 2;
+}
+
+.neural-text-box {
+  background: #162032;
+  border: 1px solid rgba(5, 151, 137, 0.3);
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  position: relative;
+}
+
+.neural-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.neural-heading {
+  font-family: 'Rajdhani', sans-serif !important;
+  font-weight: 700 !important;
+  color: #F8FAFC !important;
+  margin: 0 !important;
+}
+
+.neural-icon {
+  font-size: 2rem;
+}
+
+.neural-desc {
+  font-family: 'Space Grotesk', sans-serif !important;
+  color: #94A3B8 !important;
+  font-size: 1rem !important;
+  line-height: 1.6 !important;
+}
+
+.neural-footer {
+  display: block;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  font-family: 'JetBrains Mono', monospace !important;
+  color: #00F0FF !important;
+  font-size: 0.7rem !important;
+}
+
+@media (max-width: 900px) {
+  .tech-carousel-content-wrapper,
+  .tech-carousel-content-wrapper.reverse {
+    flex-direction: column;
+    text-align: center;
+    gap: 2rem;
+  }
+
+  .neural-connect-line {
+    width: 2px;
+    height: 50px; /* Vertical connector */
+    margin: -10px 0;
+    background: linear-gradient(to bottom, #059789, #00F0FF);
+  }
+
+  .neural-text-box {
+    text-align: left;
+  }
+}

@@ -1,6 +1,5 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import Navbar from '../components/Navbar';
 import './Explainability.css';
 import {
   Chart as ChartJS,
@@ -118,7 +117,6 @@ function Explainability() {
 
   return (
     <>
-      <Navbar />
       <div className="container explainability-container">
         <div className="text-center mb-xl">
           <h1>AI Explainability Dashboard</h1>

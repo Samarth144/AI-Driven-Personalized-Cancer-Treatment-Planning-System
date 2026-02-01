@@ -1,159 +1,151 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import Navbar from '../components/Navbar';
+import { motion } from 'framer-motion';
+import ScienceIcon from '@mui/icons-material/Science';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import PrecisionCarousel from '../components/PrecisionSlide';
+import Footer from '../components/Footer';
 import './Home.css';
+
+// --- DATA: Block 1 (Intelligence Pipeline) ---
+const intelligenceData = [
+  {
+    id: "01",
+    title: "Multimodal Staging",
+    subtitle: "MRI · CT · PET Fusion",
+    desc: "AI-driven tumor volume and staging analysis for Glioma (WHO), Breast (TNM), and Lung (I-IV) cancers using voxel-level precision.",
+    img: "https://images.unsplash.com/photo-1559757175-0eb30cd8c063?auto=format&fit=crop&w=1200&q=80",
+  },
+  {
+    id: "02",
+    title: "Uncertainty Engine",
+    subtitle: "Confidence Intervals · Risk Flags",
+    desc: "Calculates confidence levels for every prediction (95% CI). Automatically flags low-certainty outliers for manual Tumor Board review.",
+    img: "https://plus.unsplash.com/premium_photo-1682124752476-40db22034a58?auto=format&fit=crop&w=1200&q=80",
+  },
+  {
+    id: "03",
+    title: "Genomic Decoder",
+    subtitle: "IDH1 · MGMT · BRCA · HER2",
+    desc: "Automated interpretation of VCF files to map mutations to targeted therapies, identifying drug sensitivity and resistance markers.",
+    img: "https://images.unsplash.com/photo-1579165466741-7f35a4755657?auto=format&fit=crop&w=1200&q=80",
+  },
+  {
+    id: "04",
+    title: "Resource Optimization",
+    subtitle: "Cost-Utility Analysis",
+    desc: "Recommends protocols balancing survival outcomes with QALYs, hospital resource availability, and patient financial constraints.",
+    img: "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=1200&q=80",
+  }
+];
+
+// --- DATA: Block 2 (Clinical Workspace) ---
+const featuresData = [
+  {
+    id: "01",
+    title: "3D & AR/VR Digital Twin",
+    subtitle: "Surgical Planning · Vascular Overlay",
+    desc: "Interactive 3D organ and tumor reconstruction (Brain, Lung, Liver) with vascular overlay for surgical planning and patient education.",
+    img: "https://images.unsplash.com/photo-1617791160505-6f00504e3519?auto=format&fit=crop&w=1200&q=80",
+  },
+  {
+    id: "02",
+    title: "Multi-Disciplinary Board",
+    subtitle: "Automated Reporting · PDF Generation",
+    desc: "One-click generation of Tumor Board Summaries merging pathology, radiology, and genomic panels into a single meeting-ready PDF.",
+    img: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=1200&q=80",
+  },
+  {
+    id: "03",
+    title: "Explainability Dashboard",
+    subtitle: "SHAP Values · Feature Importance",
+    desc: "SHAP-based feature importance graphs showing how inputs like Resection Extent or Cardiac Issues influenced the specific treatment choice.",
+    img: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80",
+  },
+  {
+    id: "04",
+    title: "Blockchain Audit Ledger",
+    subtitle: "Immutable Logs · Polygon Network",
+    desc: "Immutable, tamper-proof logs of all data access and model versions on the Polygon network for regulatory compliance.",
+    img: "https://images.unsplash.com/photo-1639322537228-f710d846310a?auto=format&fit=crop&w=1200&q=80",
+  }
+];
 
 function Home() {
   return (
     <>
-      <Navbar />
-      
       {/* Hero Section */}
       <section className="hero">
-        <div className="hero-bg"></div>
+        <div className="hero-grid-overlay"></div>
         <div className="hero-content">
-          <h1 className="hero-title">AI-Driven Personalized Brain Tumor Treatment Planning</h1>
-          <p className="hero-subtitle">
-            Multimodal AI-powered clinical decision support for optimized, evidence-based cancer treatment protocols
-          </p>
+          <div className="hero-title-box">
+            {/* The Glow Effect Heading */}
+            <h2 className="hero-title-text">
+              AI-Driven Personalized Cancer Treatment Planning System
+            </h2>
+
+            {/* The Technical Subheading */}
+            <p className="hero-subtitle-text">
+              <span className="hero-subtitle-highlight-tech">
+                [MULTIMODAL]
+              </span>
+              {' '}AI-powered clinical decision support for optimized,<br />{' '}
+              <span className="hero-subtitle-highlight-clinical">
+                evidence-based
+              </span>
+              {' '}cancer treatment protocols.
+            </p>
+          </div>
           <div className="hero-cta">
-            <Link to="/patients" className="btn btn-primary btn-lg">Start New Analysis</Link>
-            <Link to="/dashboard" className="btn btn-secondary btn-lg">View Dashboard</Link>
-            <Link to="/tumor-3d" className="btn btn-outline btn-lg">Explore 3D Visualization</Link>
+            {/* BUTTON 1: THE "SCANNER" (Primary Action) */}
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Link to="/patients" className="btn-scanner">
+                <ScienceIcon />
+                Initialize Analysis
+              </Link>
+            </motion.div>
+
+            {/* BUTTON 2: THE "HUD LINK" (Secondary Action) */}
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Link to="/dashboard" className="btn-hud">
+                <DashboardIcon />
+                Enter Dashboard
+                {/* Decorative Corner Brackets */}
+                <span className="hud-bracket hud-bracket-tl"></span>
+                <span className="hud-bracket hud-bracket-br"></span>
+              </Link>
+            </motion.div>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="section">
-        <div className="container">
-          <div className="text-center mb-xl">
-            <h2>Comprehensive Multimodal AI Analysis</h2>
-            <p className="text-secondary">Integrating cutting-edge AI technologies for personalized treatment planning</p>
-          </div>
+      {/* Precision Features Sections */}
+      <section id="features" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        
+        <PrecisionCarousel 
+          title="Core Intelligence" 
+          subtitle="Multimodal Data Processing & Clinical Synthesis"
+          data={intelligenceData} 
+          alignment="left" // Text Left, Image Right
+        />
 
-          <div className="feature-grid">
-            <div className="feature-card">
-              <div className="icon-circle">🔬</div>
-              <h3>MRI Segmentation & Radiomics</h3>
-              <p>Advanced U-Net based tumor segmentation with comprehensive radiomics analysis including volume, shape, location, and edema metrics.</p>
-              <Link to="/mri-analysis" className="btn btn-sm btn-outline mt-md">Explore →</Link>
-            </div>
+        {/* Spacer / Divider */}
+        <div style={{ height: '100px', backgroundImage: 'linear-gradient(to right, #0B1221, rgba(5,151,137,0.2), #0B1221)' }}></div>
 
-            <div className="feature-card">
-              <div className="icon-circle">🧬</div>
-              <h3>Genomic Biomarker Interpretation</h3>
-              <p>Automated analysis of IDH1, MGMT, ATRX, and 1p/19q status with treatment sensitivity predictions and actionability mapping.</p>
-              <Link to="/genomic-analysis" className="btn btn-sm btn-outline mt-md">Explore →</Link>
-            </div>
-
-            <div className="feature-card">
-              <div className="icon-circle">📊</div>
-              <h3>Histopathology NLP Extraction</h3>
-              <p>Natural language processing of pathology reports to extract structured clinical data and WHO grade classification.</p>
-              <Link to="/histopathology" className="btn btn-sm btn-outline mt-md">Explore →</Link>
-            </div>
-
-            <div className="feature-card">
-              <div className="icon-circle">💊</div>
-              <h3>Treatment Optimization Engine</h3>
-              <p>Evidence-based protocol recommendations aligned with NCCN/EANO guidelines using multimodal data fusion.</p>
-              <Link to="/treatment-plan" className="btn btn-sm btn-outline mt-md">Explore →</Link>
-            </div>
-
-            <div className="feature-card">
-              <div className="icon-circle">📈</div>
-              <h3>Outcome & Toxicity Forecasting</h3>
-              <p>Survival predictions (OS/PFS) and side-effect risk modeling for informed decision-making.</p>
-              <Link to="/outcome-prediction" className="btn btn-sm btn-outline mt-md">Explore →</Link>
-            </div>
-
-            <div className="feature-card">
-              <div className="icon-circle">🎯</div>
-              <h3>3D AR/VR Tumor Visualization</h3>
-              <p>Interactive 3D brain models with tumor overlay, anatomical landmarks, and VR-ready visualization.</p>
-              <Link to="/tumor-3d" className="btn btn-sm btn-outline mt-md">Explore →</Link>
-            </div>
-
-            <div className="feature-card">
-              <div className="icon-circle">🛤️</div>
-              <h3>Treatment Pathway Simulator</h3>
-              <p>Interactive timeline for shared decision-making with what-if scenario comparison capabilities.</p>
-              <Link to="/pathway-simulator" className="btn btn-sm btn-outline mt-md">Explore →</Link>
-            </div>
-
-            <div className="feature-card">
-              <div className="icon-circle">🔍</div>
-              <h3>AI Explainability Dashboard</h3>
-              <p>SHAP-based feature importance and Grad-CAM visualizations for transparent AI decision-making.</p>
-              <Link to="/explainability" className="btn btn-sm btn-outline mt-md">Explore →</Link>
-            </div>
-
-            <div className="feature-card">
-              <div className="icon-circle">🔐</div>
-              <h3>Blockchain Audit Trail</h3>
-              <p>Immutable record keeping with data provenance tracking and model version history.</p>
-              <Link to="/blockchain-audit" className="btn btn-sm btn-outline mt-md">Explore →</Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Stats Section */}
-      <section className="stats-section">
-        <div className="container">
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-value">98.5%</div>
-              <div className="stat-label">Segmentation Accuracy</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">92%</div>
-              <div className="stat-label">Treatment Prediction Accuracy</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">15min</div>
-              <div className="stat-label">Average Analysis Time</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">1000+</div>
-              <div className="stat-label">Cases Analyzed</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* About Section */}
-      <section id="about" className="section">
-        <div className="container">
-          <div className="grid-2">
-            <div>
-              <h2>About NeuroOnco AI</h2>
-              <p>NeuroOnco AI is a state-of-the-art Clinical Decision Support System (CDSS) designed to assist oncologists, neurosurgeons, and tumor boards in making evidence-based treatment decisions for brain tumor patients.</p>
-              <p>By integrating multimodal data sources including MRI imaging, genomic biomarkers, histopathology reports, and clinical history, our AI engine provides personalized treatment recommendations with unprecedented accuracy and transparency.</p>
-              <p>Our system leverages cutting-edge deep learning models, natural language processing, and blockchain technology to deliver secure, auditable, and explainable clinical insights.</p>
-            </div>
-            <div className="card-glass">
-              <h3>Key Capabilities</h3>
-              <ul className="capabilities-list">
-                <li className="capability-item">✓ Multimodal data integration (MRI, genomics, pathology)</li>
-                <li className="capability-item">✓ AI-powered tumor segmentation and radiomics</li>
-                <li className="capability-item">✓ Evidence-based treatment recommendations</li>
-                <li className="capability-item">✓ Survival and toxicity prediction models</li>
-                <li className="capability-item">✓ 3D/AR/VR tumor visualization</li>
-                <li className="capability-item">✓ SHAP and Grad-CAM explainability</li>
-                <li style={{ padding: '0.5rem 0' }}>✓ Blockchain-backed audit trail</li>
-              </ul>
-            </div>
-          </div>
-        </div>
+        <PrecisionCarousel 
+          title="Clinical Workspace" 
+          subtitle="Immersive Visualization & Workflow Tools"
+          data={featuresData} 
+          alignment="right" // Text Right, Image Left
+        />
+        
       </section>
 
       {/* CTA Section */}
       <section className="cta-section">
         <div className="container">
           <div className="cta-card">
-            <h2>Get Started with NeuroOnco AI</h2>
+            <h2>Get Started with RESONANCE</h2>
             <p>Choose your role to access the appropriate interface and tools</p>
 
             <div className="role-cards">
@@ -176,15 +168,7 @@ function Home() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="main-footer">
-        <div className="container">
-          <div className="text-center">
-            <p className="text-secondary">© 2024 NeuroOnco AI - Advanced AI-Driven Cancer Treatment Planning System</p>
-            <p className="text-tertiary footer-disclaimer">For demonstration purposes only. Not for clinical use without proper validation and regulatory approval.</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </>
   );
 }

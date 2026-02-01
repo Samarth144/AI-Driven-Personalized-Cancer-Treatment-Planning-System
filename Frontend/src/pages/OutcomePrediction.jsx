@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Navbar from '../components/Navbar';
 import './OutcomePrediction.css';
 import {
   Chart as ChartJS,
@@ -166,7 +165,6 @@ function OutcomePrediction() {
 
   return (
     <>
-      <Navbar />
       <div className="container outcome-container">
         <div className="flex justify-between items-center mb-xl">
           <div>

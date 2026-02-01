@@ -1,0 +1,25 @@
+.mini-footer-root {
+  background-color: transparent;
+  padding: 2rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: auto;
+  width: 100%;
+}
+
+.mini-footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+}
+
+.mini-footer-link {
+  color: #94A3B8 !important; /* Lighter grey for dark mode visibility */
+  font-size: 0.8rem !important;
+  text-decoration: none;
+  font-family: 'Space Grotesk', sans-serif !important;
+  transition: color 0.2s;
+}
+
+.mini-footer-link:hover {
+  color: #059789 !important;
+}

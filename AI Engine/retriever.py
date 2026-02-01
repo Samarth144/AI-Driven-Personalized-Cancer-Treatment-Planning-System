@@ -83,3 +83,6 @@ def retrieve(query, k=8):
                 "score": float(dist)
             })
     return results
+
+if __name__ == "__main__":
+    build_index()

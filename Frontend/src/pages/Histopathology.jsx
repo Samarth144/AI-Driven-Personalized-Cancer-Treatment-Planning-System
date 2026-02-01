@@ -1,6 +1,4 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Navbar from '../components/Navbar';
+import React from 'react';
 import './Histopathology.css';
 
 function Histopathology() {
@@ -22,8 +20,7 @@ function Histopathology() {
 
   return (
     <>
-      <Navbar />
-      <div className="container histopathology-container">
+      <div className="histo-header">
         <div className="flex justify-between items-center mb-xl">
           <div>
             <h1>Histopathology Report Analysis</h1>

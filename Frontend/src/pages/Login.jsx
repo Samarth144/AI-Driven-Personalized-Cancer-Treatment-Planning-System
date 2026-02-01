@@ -1,6 +1,4 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Navbar from '../components/Navbar';
+import React from 'react';
 import './Login.css';
 
 function Login() {
@@ -15,8 +13,7 @@ function Login() {
 
   return (
     <>
-      <Navbar />
-      <div className="auth-container">
+      <div className="login-container">
         <div className="auth-box">
           <h2 className="login-title">Secure Login</h2>
           <form onSubmit={handleLogin}>

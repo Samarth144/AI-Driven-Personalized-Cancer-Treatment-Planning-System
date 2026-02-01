@@ -1,0 +1,17 @@
+{
+  "breast": {
+    "display_name": "Breast Cancer"
+  },
+  "brain": {
+    "display_name": "Brain Tumors"
+  },
+  "lung": {
+    "display_name": "Lung Cancer"
+  },
+  "liver": {
+    "display_name": "Liver Cancer"
+  },
+  "pancreas": {
+    "display_name": "Pancreatic Cancer"
+  }
+}

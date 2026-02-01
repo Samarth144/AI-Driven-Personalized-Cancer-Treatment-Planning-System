@@ -1,0 +1,16 @@
+{
+  "stages": {
+    "LOCALIZED": {
+      "surgery": ["Maximal safe resection"],
+      "radiation": ["60 Gy fractionated radiotherapy"],
+      "systemic": ["Temozolomide concurrent + adjuvant"],
+      "mgmt": ["Prolonged benefit if MGMT methylated"],
+      "follow_up": ["MRI q2-3m"]
+    },
+    "RECURRENT": {
+      "systemic": ["Bevacizumab"],
+      "surgery": ["Re-resection if feasible"],
+      "radiation": ["Re-irradiation selectively"]
+    }
+  }
+}

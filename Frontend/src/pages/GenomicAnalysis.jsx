@@ -11,7 +11,6 @@ import {
   Legend
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
-import Navbar from '../components/Navbar';
 import './GenomicAnalysis.css';
 
 // Register ChartJS components
@@ -140,12 +139,11 @@ function GenomicAnalysis() {
 
   return (
     <>
-      <Navbar />
       <div className="container genomic-container">
         <div className="flex justify-between items-center mb-xl">
           <div>
             <h1>Genomic & Molecular Biomarker Analysis</h1>
-            <p className="text-secondary">AI-powered interpretation of key brain tumor biomarkers</p>
+            <p className="text-secondary">AI-powered interpretation of key cancer biomarkers</p>
           </div>
           <button className="btn btn-primary" onClick={runGenomicAnalysis} disabled={loading}>
             {loading ? 'Analyzing...' : '🧬 Analyze Biomarkers'}
