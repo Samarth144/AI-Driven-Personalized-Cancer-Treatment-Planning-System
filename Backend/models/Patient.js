@@ -1,69 +1,70 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/db');
+const User = require('./User');
 
-const patientSchema = new mongoose.Schema({
+const Patient = sequelize.define('Patient', {
+    id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true
+    },
     mrn: {
-        type: String,
-        required: [true, 'Please add a Medical Record Number'],
+        type: DataTypes.STRING,
+        allowNull: false,
         unique: true
     },
     firstName: {
-        type: String,
-        required: [true, 'Please add first name'],
-        trim: true
+        type: DataTypes.STRING,
+        allowNull: false
     },
     lastName: {
-        type: String,
-        required: [true, 'Please add last name'],
-        trim: true
+        type: DataTypes.STRING,
+        allowNull: false
     },
     dateOfBirth: {
-        type: Date,
-        required: [true, 'Please add date of birth']
+        type: DataTypes.DATE,
+        allowNull: false
     },
     gender: {
-        type: String,
-        enum: ['male', 'female', 'other'],
-        required: [true, 'Please add gender']
+        type: DataTypes.ENUM('male', 'female', 'other'),
+        allowNull: false
     },
     email: {
-        type: String,
-        lowercase: true,
-        match: [
-            /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
-            'Please add a valid email'
-        ]
+        type: DataTypes.STRING,
+        validate: {
+            isEmail: true
+        }
     },
     phone: {
-        type: String
+        type: DataTypes.STRING
     },
     diagnosis: {
-        type: String,
-        required: [true, 'Please add diagnosis']
+        type: DataTypes.STRING,
+        allowNull: false
     },
     diagnosisDate: {
-        type: Date,
-        required: [true, 'Please add diagnosis date']
+        type: DataTypes.DATE,
+        allowNull: false
     },
     performanceStatus: {
-        type: String,
-        enum: ['0', '1', '2', '3', '4'],
-        default: '1'
+        type: DataTypes.ENUM('0', '1', '2', '3', '4'),
+        defaultValue: '1'
     },
     medicalHistory: {
-        type: String
+        type: DataTypes.TEXT
     },
-    currentMedications: [{
-        name: String,
-        dosage: String
-    }],
-    allergies: [String],
-    oncologist: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
+    currentMedications: {
+        type: DataTypes.JSONB, // Store array of objects as JSONB
+        defaultValue: []
+    },
+    allergies: {
+        type: DataTypes.ARRAY(DataTypes.STRING),
+        defaultValue: []
     }
-}, {
-    timestamps: true
 });
 
-module.exports = mongoose.model('Patient', patientSchema);
+// Associations
+Patient.belongsTo(User, { as: 'oncologist', foreignKey: 'oncologistId' });
+User.hasMany(Patient, { foreignKey: 'oncologistId' });
+
+module.exports = Patient;

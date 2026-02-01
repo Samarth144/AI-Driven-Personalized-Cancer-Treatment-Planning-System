@@ -10,7 +10,7 @@ exports.register = async (req, res) => {
         const { name, email, password, role } = req.body;
 
         // Check if user exists
-        const userExists = await User.findOne({ email });
+        const userExists = await User.findOne({ where: { email } });
         if (userExists) {
             return res.status(400).json({
                 success: false,
@@ -29,9 +29,9 @@ exports.register = async (req, res) => {
         // Create audit log
         const previousHash = await AuditLog.getLastHash();
         await AuditLog.create({
-            user: user._id,
-            action: 'user_registered',
-            data: { email: user.email, role: user.role },
+            userId: user.id,
+            action: 'other', // 'user_registered' not in enum, using other
+            data: { email: user.email, role: user.role, detail: 'user_registered' },
             previousHash,
             ipAddress: req.ip,
             userAgent: req.get('user-agent')
@@ -40,11 +40,11 @@ exports.register = async (req, res) => {
         res.status(201).json({
             success: true,
             data: {
-                _id: user._id,
+                id: user.id,
                 name: user.name,
                 email: user.email,
                 role: user.role,
-                token: generateToken(user._id)
+                token: generateToken(user.id)
             }
         });
     } catch (error) {
@@ -71,7 +71,7 @@ exports.login = async (req, res) => {
         }
 
         // Check for user
-        const user = await User.findOne({ email }).select('+password');
+        const user = await User.findOne({ where: { email } });
         if (!user) {
             return res.status(401).json({
                 success: false,
@@ -91,7 +91,7 @@ exports.login = async (req, res) => {
         // Create audit log
         const previousHash = await AuditLog.getLastHash();
         await AuditLog.create({
-            user: user._id,
+            userId: user.id,
             action: 'user_login',
             data: { email: user.email },
             previousHash,
@@ -102,11 +102,11 @@ exports.login = async (req, res) => {
         res.json({
             success: true,
             data: {
-                _id: user._id,
+                id: user.id,
                 name: user.name,
                 email: user.email,
                 role: user.role,
-                token: generateToken(user._id)
+                token: generateToken(user.id)
             }
         });
     } catch (error) {
@@ -122,7 +122,7 @@ exports.login = async (req, res) => {
 // @access  Private
 exports.getMe = async (req, res) => {
     try {
-        const user = await User.findById(req.user.id);
+        const user = await User.findByPk(req.user.id);
 
         res.json({
             success: true,

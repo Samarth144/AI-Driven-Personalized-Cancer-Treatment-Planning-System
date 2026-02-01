@@ -1,4 +1,5 @@
 const Patient = require('../models/Patient');
+const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
 
 // @desc    Get all patients
@@ -8,22 +9,25 @@ exports.getPatients = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
-        const skip = (page - 1) * limit;
+        const offset = (page - 1) * limit;
 
-        const patients = await Patient.find()
-            .populate('oncologist', 'name email')
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit);
-
-        const total = await Patient.countDocuments();
+        const { count, rows: patients } = await Patient.findAndCountAll({
+            include: [{
+                model: User,
+                as: 'oncologist',
+                attributes: ['name', 'email']
+            }],
+            order: [['createdAt', 'DESC']],
+            limit,
+            offset
+        });
 
         res.json({
             success: true,
             count: patients.length,
-            total,
+            total: count,
             page,
-            pages: Math.ceil(total / limit),
+            pages: Math.ceil(count / limit),
             data: patients
         });
     } catch (error) {
@@ -39,8 +43,13 @@ exports.getPatients = async (req, res) => {
 // @access  Private
 exports.getPatient = async (req, res) => {
     try {
-        const patient = await Patient.findById(req.params.id)
-            .populate('oncologist', 'name email');
+        const patient = await Patient.findByPk(req.params.id, {
+            include: [{
+                model: User,
+                as: 'oncologist',
+                attributes: ['name', 'email']
+            }]
+        });
 
         if (!patient) {
             return res.status(404).json({
@@ -67,15 +76,15 @@ exports.getPatient = async (req, res) => {
 exports.createPatient = async (req, res) => {
     try {
         // Add user as oncologist
-        req.body.oncologist = req.user.id;
+        req.body.oncologistId = req.user.id;
 
         const patient = await Patient.create(req.body);
 
         // Create audit log
         const previousHash = await AuditLog.getLastHash();
         await AuditLog.create({
-            patient: patient._id,
-            user: req.user.id,
+            patientId: patient.id,
+            userId: req.user.id,
             action: 'patient_created',
             data: { mrn: patient.mrn, name: `${patient.firstName} ${patient.lastName}` },
             previousHash,
@@ -100,7 +109,7 @@ exports.createPatient = async (req, res) => {
 // @access  Private
 exports.updatePatient = async (req, res) => {
     try {
-        let patient = await Patient.findById(req.params.id);
+        let patient = await Patient.findByPk(req.params.id);
 
         if (!patient) {
             return res.status(404).json({
@@ -109,16 +118,13 @@ exports.updatePatient = async (req, res) => {
             });
         }
 
-        patient = await Patient.findByIdAndUpdate(req.params.id, req.body, {
-            new: true,
-            runValidators: true
-        });
+        await patient.update(req.body);
 
         // Create audit log
         const previousHash = await AuditLog.getLastHash();
         await AuditLog.create({
-            patient: patient._id,
-            user: req.user.id,
+            patientId: patient.id,
+            userId: req.user.id,
             action: 'patient_updated',
             data: { updates: Object.keys(req.body) },
             previousHash,
@@ -143,7 +149,7 @@ exports.updatePatient = async (req, res) => {
 // @access  Private
 exports.deletePatient = async (req, res) => {
     try {
-        const patient = await Patient.findById(req.params.id);
+        const patient = await Patient.findByPk(req.params.id);
 
         if (!patient) {
             return res.status(404).json({
@@ -152,15 +158,18 @@ exports.deletePatient = async (req, res) => {
             });
         }
 
-        await patient.deleteOne();
+        const mrn = patient.mrn;
+        const patientId = patient.id;
+        
+        await patient.destroy();
 
         // Create audit log
         const previousHash = await AuditLog.getLastHash();
         await AuditLog.create({
-            patient: patient._id,
-            user: req.user.id,
+            patientId: patientId,
+            userId: req.user.id,
             action: 'patient_deleted',
-            data: { mrn: patient.mrn },
+            data: { mrn },
             previousHash,
             ipAddress: req.ip,
             userAgent: req.get('user-agent')

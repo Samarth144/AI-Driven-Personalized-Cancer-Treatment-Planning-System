@@ -1,31 +1,41 @@
 const Patient = require('../models/Patient');
 const Analysis = require('../models/Analysis');
 const TreatmentPlan = require('../models/TreatmentPlan');
+const User = require('../models/User');
+const { Op, fn, col } = require('sequelize');
 
 // @desc    Get dashboard statistics
 // @route   GET /api/dashboard/stats
 // @access  Private
 exports.getStats = async (req, res) => {
     try {
-        const totalPatients = await Patient.countDocuments();
-        const totalAnalyses = await Analysis.countDocuments();
-        const completedAnalyses = await Analysis.countDocuments({ status: 'completed' });
-        const activeTreatments = await TreatmentPlan.countDocuments({ status: 'active' });
+        const totalPatients = await Patient.count();
+        const totalAnalyses = await Analysis.count();
+        const completedAnalyses = await Analysis.count({ where: { status: 'completed' } });
+        const activeTreatments = await TreatmentPlan.count({ where: { status: 'active' } });
 
         // Get recent activity count (last 7 days)
         const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        const recentPatients = await Patient.countDocuments({ createdAt: { $gte: sevenDaysAgo } });
-        const recentAnalyses = await Analysis.countDocuments({ createdAt: { $gte: sevenDaysAgo } });
+        const recentPatients = await Patient.count({ where: { createdAt: { [Op.gte]: sevenDaysAgo } } });
+        const recentAnalyses = await Analysis.count({ where: { createdAt: { [Op.gte]: sevenDaysAgo } } });
 
         // Analysis type breakdown
-        const analysisByType = await Analysis.aggregate([
-            { $group: { _id: '$analysisType', count: { $sum: 1 } } }
-        ]);
+        const analysisByType = await Analysis.findAll({
+            attributes: [
+                ['analysisType', '_id'],
+                [fn('COUNT', col('id')), 'count']
+            ],
+            group: ['analysisType']
+        });
 
         // Treatment status breakdown
-        const treatmentsByStatus = await TreatmentPlan.aggregate([
-            { $group: { _id: '$status', count: { $sum: 1 } } }
-        ]);
+        const treatmentsByStatus = await TreatmentPlan.findAll({
+            attributes: [
+                ['status', '_id'],
+                [fn('COUNT', col('id')), 'count']
+            ],
+            group: ['status']
+        });
 
         res.json({
             success: true,
@@ -59,10 +69,11 @@ exports.getRecentPatients = async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 5;
 
-        const patients = await Patient.find()
-            .populate('oncologist', 'name')
-            .sort({ createdAt: -1 })
-            .limit(limit);
+        const patients = await Patient.findAll({
+            include: [{ model: User, as: 'oncologist', attributes: ['name'] }],
+            order: [['createdAt', 'DESC']],
+            limit
+        });
 
         res.json({
             success: true,
@@ -83,11 +94,14 @@ exports.getRecentAnalyses = async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 5;
 
-        const analyses = await Analysis.find()
-            .populate('patient', 'firstName lastName mrn')
-            .populate('performedBy', 'name')
-            .sort({ createdAt: -1 })
-            .limit(limit);
+        const analyses = await Analysis.findAll({
+            include: [
+                { model: Patient, attributes: ['firstName', 'lastName', 'mrn'] },
+                { model: User, as: 'performedBy', attributes: ['name'] }
+            ],
+            order: [['createdAt', 'DESC']],
+            limit
+        });
 
         res.json({
             success: true,

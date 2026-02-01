@@ -1,4 +1,6 @@
 const AuditLog = require('../models/AuditLog');
+const User = require('../models/User');
+const Patient = require('../models/Patient');
 const crypto = require('crypto');
 
 // @desc    Get all audit logs
@@ -8,23 +10,24 @@ exports.getAuditLogs = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
-        const skip = (page - 1) * limit;
+        const offset = (page - 1) * limit;
 
-        const logs = await AuditLog.find()
-            .populate('user', 'name email role')
-            .populate('patient', 'firstName lastName mrn')
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit);
-
-        const total = await AuditLog.countDocuments();
+        const { count, rows: logs } = await AuditLog.findAndCountAll({
+            include: [
+                { model: User, attributes: ['name', 'email', 'role'] },
+                { model: Patient, attributes: ['firstName', 'lastName', 'mrn'] }
+            ],
+            order: [['createdAt', 'DESC']],
+            limit,
+            offset
+        });
 
         res.json({
             success: true,
             count: logs.length,
-            total,
+            total: count,
             page,
-            pages: Math.ceil(total / limit),
+            pages: Math.ceil(count / limit),
             data: logs
         });
     } catch (error) {
@@ -40,9 +43,13 @@ exports.getAuditLogs = async (req, res) => {
 // @access  Private
 exports.getPatientAuditLogs = async (req, res) => {
     try {
-        const logs = await AuditLog.find({ patient: req.params.patientId })
-            .populate('user', 'name email role')
-            .sort({ createdAt: -1 });
+        const logs = await AuditLog.findAll({
+            where: { patientId: req.params.patientId },
+            include: [
+                { model: User, attributes: ['name', 'email', 'role'] }
+            ],
+            order: [['createdAt', 'DESC']]
+        });
 
         res.json({
             success: true,
@@ -62,7 +69,7 @@ exports.getPatientAuditLogs = async (req, res) => {
 // @access  Private (Admin/Researcher)
 exports.verifyBlockchain = async (req, res) => {
     try {
-        const logs = await AuditLog.find().sort({ createdAt: 1 });
+        const logs = await AuditLog.findAll({ order: [['createdAt', 'ASC']] });
 
         let isValid = true;
         const errors = [];
@@ -70,13 +77,12 @@ exports.verifyBlockchain = async (req, res) => {
         for (let i = 0; i < logs.length; i++) {
             const log = logs[i];
 
-            // Verify hash
+            // Verify hash (match the hook logic)
             const dataString = JSON.stringify({
-                patient: log.patient,
-                user: log.user,
+                patientId: log.patientId,
+                userId: log.userId,
                 action: log.action,
                 data: log.data,
-                timestamp: log.createdAt,
                 previousHash: log.previousHash
             });
 
@@ -88,7 +94,7 @@ exports.verifyBlockchain = async (req, res) => {
             if (calculatedHash !== log.hash) {
                 isValid = false;
                 errors.push({
-                    logId: log._id,
+                    logId: log.id,
                     error: 'Hash mismatch',
                     expected: log.hash,
                     calculated: calculatedHash
@@ -99,7 +105,7 @@ exports.verifyBlockchain = async (req, res) => {
             if (i > 0 && log.previousHash !== logs[i - 1].hash) {
                 isValid = false;
                 errors.push({
-                    logId: log._id,
+                    logId: log.id,
                     error: 'Chain broken',
                     expected: logs[i - 1].hash,
                     actual: log.previousHash

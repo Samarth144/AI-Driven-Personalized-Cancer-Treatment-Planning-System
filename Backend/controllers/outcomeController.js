@@ -1,4 +1,7 @@
 const OutcomePrediction = require('../models/OutcomePrediction');
+const TreatmentPlan = require('../models/TreatmentPlan');
+const Patient = require('../models/Patient');
+const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
 const { generateMockAnalysis } = require('../utils/aiSimulator');
 
@@ -7,10 +10,14 @@ const { generateMockAnalysis } = require('../utils/aiSimulator');
 // @access  Private
 exports.getPatientOutcomes = async (req, res) => {
     try {
-        const outcomes = await OutcomePrediction.find({ patient: req.params.patientId })
-            .populate('treatmentPlan', 'recommendedProtocol')
-            .populate('generatedBy', 'name email')
-            .sort({ createdAt: -1 });
+        const outcomes = await OutcomePrediction.findAll({
+            where: { patientId: req.params.patientId },
+            include: [
+                { model: TreatmentPlan, attributes: ['recommendedProtocol'] },
+                { model: User, as: 'generatedBy', attributes: ['name', 'email'] }
+            ],
+            order: [['createdAt', 'DESC']]
+        });
 
         res.json({
             success: true,
@@ -30,10 +37,13 @@ exports.getPatientOutcomes = async (req, res) => {
 // @access  Private
 exports.getOutcome = async (req, res) => {
     try {
-        const outcome = await OutcomePrediction.findById(req.params.id)
-            .populate('patient', 'firstName lastName mrn')
-            .populate('treatmentPlan', 'recommendedProtocol')
-            .populate('generatedBy', 'name email');
+        const outcome = await OutcomePrediction.findByPk(req.params.id, {
+            include: [
+                { model: Patient, attributes: ['firstName', 'lastName', 'mrn'] },
+                { model: TreatmentPlan, attributes: ['recommendedProtocol'] },
+                { model: User, as: 'generatedBy', attributes: ['name', 'email'] }
+            ]
+        });
 
         if (!outcome) {
             return res.status(404).json({
@@ -59,29 +69,27 @@ exports.getOutcome = async (req, res) => {
 // @access  Private
 exports.createOutcome = async (req, res) => {
     try {
-        req.body.generatedBy = req.user.id;
+        req.body.generatedById = req.user.id;
 
         // Generate AI-based outcome prediction
         const aiResults = generateMockAnalysis('outcome');
 
-        const outcomeData = {
+        const outcome = await OutcomePrediction.create({
             ...req.body,
             overallSurvival: aiResults.overallSurvival,
             progressionFreeSurvival: aiResults.progressionFreeSurvival,
             sideEffects: aiResults.sideEffects,
             qualityOfLife: aiResults.qualityOfLife
-        };
-
-        const outcome = await OutcomePrediction.create(outcomeData);
+        });
 
         // Create audit log
         const previousHash = await AuditLog.getLastHash();
         await AuditLog.create({
-            patient: outcome.patient,
-            user: req.user.id,
+            patientId: outcome.patientId,
+            userId: req.user.id,
             action: 'outcome_generated',
             data: {
-                outcomeId: outcome._id,
+                outcomeId: outcome.id,
                 medianOS: outcome.overallSurvival.median,
                 medianPFS: outcome.progressionFreeSurvival.median
             },

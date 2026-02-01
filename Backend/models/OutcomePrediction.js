@@ -1,64 +1,43 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/db');
+const Patient = require('./Patient');
+const TreatmentPlan = require('./TreatmentPlan');
+const User = require('./User');
 
-const outcomePredictionSchema = new mongoose.Schema({
-    patient: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Patient',
-        required: true
-    },
-    treatmentPlan: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'TreatmentPlan'
+const OutcomePrediction = sequelize.define('OutcomePrediction', {
+    id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true
     },
     overallSurvival: {
-        median: {
-            type: Number,
-            required: true
-        },
-        range: {
-            min: Number,
-            max: Number
-        },
-        confidence: Number
+        type: DataTypes.JSONB,
+        allowNull: false
     },
     progressionFreeSurvival: {
-        median: {
-            type: Number,
-            required: true
-        },
-        range: {
-            min: Number,
-            max: Number
-        },
-        confidence: Number
+        type: DataTypes.JSONB,
+        allowNull: false
     },
     sideEffects: {
-        fatigue: Number,
-        nausea: Number,
-        cognitiveImpairment: Number,
-        hematologicToxicity: Number,
-        other: mongoose.Schema.Types.Mixed
+        type: DataTypes.JSONB
     },
     qualityOfLife: {
-        score: Number,
-        timeline: [{
-            month: Number,
-            score: Number
-        }]
+        type: DataTypes.JSONB
     },
     modelVersion: {
-        type: String,
-        default: '1.0.0'
+        type: DataTypes.STRING,
+        defaultValue: '1.0.0'
     },
     inputFeatures: {
-        type: mongoose.Schema.Types.Mixed
-    },
-    generatedBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        type: DataTypes.JSONB
     }
-}, {
-    timestamps: true
 });
 
-module.exports = mongoose.model('OutcomePrediction', outcomePredictionSchema);
+// Associations
+OutcomePrediction.belongsTo(Patient, { foreignKey: 'patientId' });
+Patient.hasMany(OutcomePrediction, { foreignKey: 'patientId' });
+
+OutcomePrediction.belongsTo(TreatmentPlan, { foreignKey: 'treatmentPlanId' });
+OutcomePrediction.belongsTo(User, { as: 'generatedBy', foreignKey: 'generatedById' });
+
+module.exports = OutcomePrediction;

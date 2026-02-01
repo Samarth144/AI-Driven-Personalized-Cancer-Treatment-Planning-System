@@ -53,8 +53,8 @@ exports.uploadFile = [
             if (req.body.patientId) {
                 const previousHash = await AuditLog.getLastHash();
                 await AuditLog.create({
-                    patient: req.body.patientId,
-                    user: req.user.id,
+                    patientId: req.body.patientId,
+                    userId: req.user.id,
                     action: 'file_uploaded',
                     data: {
                         filename: req.file.filename,

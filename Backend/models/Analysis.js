@@ -1,55 +1,50 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/db');
+const Patient = require('./Patient');
+const User = require('./User');
 
-const analysisSchema = new mongoose.Schema({
-    patient: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Patient',
-        required: true
+const Analysis = sequelize.define('Analysis', {
+    id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true
     },
     analysisType: {
-        type: String,
-        enum: ['mri', 'genomic', 'histopathology'],
-        required: [true, 'Please specify analysis type']
+        type: DataTypes.ENUM('mri', 'genomic', 'histopathology'),
+        allowNull: false
     },
     status: {
-        type: String,
-        enum: ['pending', 'processing', 'completed', 'failed'],
-        default: 'pending'
+        type: DataTypes.ENUM('pending', 'processing', 'completed', 'failed'),
+        defaultValue: 'pending'
     },
     data: {
-        type: mongoose.Schema.Types.Mixed,
-        default: {}
+        type: DataTypes.JSONB,
+        defaultValue: {}
     },
-    uploadedFiles: [{
-        filename: String,
-        originalName: String,
-        path: String,
-        size: Number,
-        uploadDate: {
-            type: Date,
-            default: Date.now
-        }
-    }],
+    uploadedFiles: {
+        type: DataTypes.JSONB,
+        defaultValue: []
+    },
     processingTime: {
-        type: Number // in milliseconds
+        type: DataTypes.INTEGER
     },
     confidence: {
-        type: Number,
-        min: 0,
-        max: 100
+        type: DataTypes.FLOAT,
+        validate: {
+            min: 0,
+            max: 100
+        }
     },
     notes: {
-        type: String
-    },
-    performedBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        type: DataTypes.TEXT
     }
-}, {
-    timestamps: true
 });
 
-// Index for faster queries
-analysisSchema.index({ patient: 1, analysisType: 1 });
+// Associations
+Analysis.belongsTo(Patient, { foreignKey: 'patientId' });
+Patient.hasMany(Analysis, { foreignKey: 'patientId' });
 
-module.exports = mongoose.model('Analysis', analysisSchema);
+Analysis.belongsTo(User, { as: 'performedBy', foreignKey: 'performedById' });
+User.hasMany(Analysis, { foreignKey: 'performedById' });
+
+module.exports = Analysis;

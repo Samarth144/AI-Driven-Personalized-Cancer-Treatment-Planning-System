@@ -4,14 +4,21 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
-const connectDB = require('./config/db');
+const { sequelize, connectDB } = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
 
 // Load env vars
 dotenv.config();
 
-//Connect to database
-// connectDB();
+// Connect to database
+connectDB();
+
+// Sync models
+sequelize.sync({ alter: true }).then(() => {
+    console.log('🐘 Database models synchronized');
+}).catch(err => {
+    console.error('❌ Database synchronization failed:', err);
+});
 
 const app = express();
 
@@ -52,7 +59,7 @@ app.use('/api/uploads', require('./routes/uploads'));
 app.get('/api/health', (req, res) => {
     res.json({
         success: true,
-        message: 'NeuroOnco AI Backend is running',
+        message: 'RESONANCE AI Backend is running',
         timestamp: new Date().toISOString()
     });
 });
@@ -78,7 +85,7 @@ const server = app.listen(PORT, () => {
     console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
-║         🧠 NeuroOnco AI Backend Server Running           ║
+║              🧠 RESONANCE Backend Server Running          ║
 ║                                                           ║
 ║   Environment: ${process.env.NODE_ENV || 'development'}                              ║
 ║   Port: ${PORT}                                              ║

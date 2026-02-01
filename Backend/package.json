@@ -1,7 +1,7 @@
 {
-  "name": "neuroOnco-ai-backend",
+  "name": "resonance-backend",
   "version": "1.0.0",
-  "description": "AI-Driven Personalized Cancer Treatment Planning System - Backend API",
+  "description": "RESONANCE - AI-Driven Personalized Cancer Treatment Planning System",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -25,9 +25,11 @@
     "express-validator": "^7.0.1",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.0.3",
     "morgan": "^1.10.0",
-    "multer": "^2.0.2"
+    "multer": "^2.0.2",
+    "pg": "^8.18.0",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.7"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

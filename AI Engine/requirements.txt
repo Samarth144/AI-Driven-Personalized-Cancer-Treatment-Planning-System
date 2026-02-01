@@ -1,7 +1,0 @@
-Flask
-flask-cors
-sentence-transformers
-faiss-cpu
-numpy
-pdfplumber
-requests

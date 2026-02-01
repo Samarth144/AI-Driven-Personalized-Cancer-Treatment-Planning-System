@@ -1,67 +1,58 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/db');
+const Patient = require('./Patient');
+const User = require('./User');
 
-const treatmentPlanSchema = new mongoose.Schema({
-    patient: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Patient',
-        required: true
+const TreatmentPlan = sequelize.define('TreatmentPlan', {
+    id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true
     },
     recommendedProtocol: {
-        type: String,
-        required: [true, 'Please add recommended protocol']
+        type: DataTypes.STRING,
+        allowNull: false
     },
     confidence: {
-        type: Number,
-        required: true,
-        min: 0,
-        max: 100
+        type: DataTypes.FLOAT,
+        allowNull: false,
+        validate: {
+            min: 0,
+            max: 100
+        }
     },
-    alternativeOptions: [{
-        protocol: String,
-        confidence: Number,
-        rationale: String
-    }],
+    alternativeOptions: {
+        type: DataTypes.JSONB,
+        defaultValue: []
+    },
     guidelineAlignment: {
-        type: String,
-        enum: ['NCCN', 'EANO', 'ESMO', 'Other'],
-        default: 'NCCN'
+        type: DataTypes.ENUM('NCCN', 'EANO', 'ESMO', 'Other'),
+        defaultValue: 'NCCN'
     },
     status: {
-        type: String,
-        enum: ['draft', 'proposed', 'approved', 'active', 'completed', 'discontinued'],
-        default: 'proposed'
+        type: DataTypes.ENUM('draft', 'proposed', 'approved', 'active', 'completed', 'discontinued'),
+        defaultValue: 'proposed'
     },
-    treatmentComponents: [{
-        type: {
-            type: String,
-            enum: ['surgery', 'radiation', 'chemotherapy', 'immunotherapy', 'targeted_therapy', 'other']
-        },
-        description: String,
-        startDate: Date,
-        endDate: Date,
-        dosage: String,
-        frequency: String
-    }],
+    treatmentComponents: {
+        type: DataTypes.JSONB,
+        defaultValue: []
+    },
     rationale: {
-        type: String
+        type: DataTypes.TEXT
     },
     expectedOutcomes: {
-        type: mongoose.Schema.Types.Mixed
-    },
-    approvedBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        type: DataTypes.JSONB
     },
     approvalDate: {
-        type: Date
-    },
-    createdBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
+        type: DataTypes.DATE
     }
-}, {
-    timestamps: true
 });
 
-module.exports = mongoose.model('TreatmentPlan', treatmentPlanSchema);
+// Associations
+TreatmentPlan.belongsTo(Patient, { foreignKey: 'patientId' });
+Patient.hasMany(TreatmentPlan, { foreignKey: 'patientId' });
+
+TreatmentPlan.belongsTo(User, { as: 'approvedBy', foreignKey: 'approvedById' });
+TreatmentPlan.belongsTo(User, { as: 'createdBy', foreignKey: 'createdById' });
+
+module.exports = TreatmentPlan;

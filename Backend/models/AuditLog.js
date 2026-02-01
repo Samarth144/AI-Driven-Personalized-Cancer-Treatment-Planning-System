@@ -1,20 +1,17 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/db');
+const Patient = require('./Patient');
+const User = require('./User');
 const crypto = require('crypto');
 
-const auditLogSchema = new mongoose.Schema({
-    patient: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Patient'
-    },
-    user: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
+const AuditLog = sequelize.define('AuditLog', {
+    id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true
     },
     action: {
-        type: String,
-        required: [true, 'Please specify action'],
-        enum: [
+        type: DataTypes.ENUM(
             'patient_created',
             'patient_updated',
             'patient_deleted',
@@ -28,53 +25,60 @@ const auditLogSchema = new mongoose.Schema({
             'user_login',
             'user_logout',
             'other'
-        ]
+        ),
+        allowNull: false
     },
     data: {
-        type: mongoose.Schema.Types.Mixed
+        type: DataTypes.JSONB
     },
     hash: {
-        type: String,
-        required: true
+        type: DataTypes.STRING,
+        unique: true
     },
     previousHash: {
-        type: String,
-        default: '0'
+        type: DataTypes.STRING,
+        defaultValue: '0'
     },
     ipAddress: {
-        type: String
+        type: DataTypes.STRING
     },
     userAgent: {
-        type: String
+        type: DataTypes.STRING
     }
 }, {
-    timestamps: true
-});
+    hooks: {
+        beforeSave: async (log) => {
+            if (!log.hash) {
+                const dataString = JSON.stringify({
+                    patientId: log.patientId,
+                    userId: log.userId,
+                    action: log.action,
+                    data: log.data,
+                    previousHash: log.previousHash
+                });
 
-// Generate hash before saving
-auditLogSchema.pre('save', async function (next) {
-    if (!this.hash) {
-        const dataString = JSON.stringify({
-            patient: this.patient,
-            user: this.user,
-            action: this.action,
-            data: this.data,
-            timestamp: this.createdAt,
-            previousHash: this.previousHash
-        });
-
-        this.hash = crypto
-            .createHash('sha256')
-            .update(dataString)
-            .digest('hex');
+                log.hash = crypto
+                    .createHash('sha256')
+                    .update(dataString)
+                    .digest('hex');
+            }
+        }
     }
-    next();
 });
 
-// Static method to get last hash
-auditLogSchema.statics.getLastHash = async function () {
-    const lastLog = await this.findOne().sort({ createdAt: -1 });
+// Associations
+AuditLog.belongsTo(Patient, { foreignKey: 'patientId' });
+Patient.hasMany(AuditLog, { foreignKey: 'patientId' });
+
+AuditLog.belongsTo(User, { foreignKey: 'userId' });
+User.hasMany(AuditLog, { foreignKey: 'userId' });
+
+// Static method
+AuditLog.getLastHash = async function () {
+    const lastLog = await this.findOne({
+        order: [['createdAt', 'DESC']]
+    });
     return lastLog ? lastLog.hash : '0';
 };
 
-module.exports = mongoose.model('AuditLog', auditLogSchema);
+module.exports = AuditLog;

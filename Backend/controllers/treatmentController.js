@@ -1,4 +1,6 @@
 const TreatmentPlan = require('../models/TreatmentPlan');
+const Patient = require('../models/Patient');
+const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
 const { generateMockAnalysis } = require('../utils/aiSimulator');
 
@@ -7,10 +9,14 @@ const { generateMockAnalysis } = require('../utils/aiSimulator');
 // @access  Private
 exports.getPatientTreatments = async (req, res) => {
     try {
-        const treatments = await TreatmentPlan.find({ patient: req.params.patientId })
-            .populate('createdBy', 'name email')
-            .populate('approvedBy', 'name email')
-            .sort({ createdAt: -1 });
+        const treatments = await TreatmentPlan.findAll({
+            where: { patientId: req.params.patientId },
+            include: [
+                { model: User, as: 'createdBy', attributes: ['name', 'email'] },
+                { model: User, as: 'approvedBy', attributes: ['name', 'email'] }
+            ],
+            order: [['createdAt', 'DESC']]
+        });
 
         res.json({
             success: true,
@@ -30,10 +36,13 @@ exports.getPatientTreatments = async (req, res) => {
 // @access  Private
 exports.getTreatment = async (req, res) => {
     try {
-        const treatment = await TreatmentPlan.findById(req.params.id)
-            .populate('patient', 'firstName lastName mrn')
-            .populate('createdBy', 'name email')
-            .populate('approvedBy', 'name email');
+        const treatment = await TreatmentPlan.findByPk(req.params.id, {
+            include: [
+                { model: Patient, attributes: ['firstName', 'lastName', 'mrn'] },
+                { model: User, as: 'createdBy', attributes: ['name', 'email'] },
+                { model: User, as: 'approvedBy', attributes: ['name', 'email'] }
+            ]
+        });
 
         if (!treatment) {
             return res.status(404).json({
@@ -59,7 +68,7 @@ exports.getTreatment = async (req, res) => {
 // @access  Private
 exports.createTreatment = async (req, res) => {
     try {
-        req.body.createdBy = req.user.id;
+        req.body.createdById = req.user.id;
 
         // If no treatment data provided, generate using AI
         if (!req.body.recommendedProtocol) {
@@ -76,10 +85,10 @@ exports.createTreatment = async (req, res) => {
         // Create audit log
         const previousHash = await AuditLog.getLastHash();
         await AuditLog.create({
-            patient: treatment.patient,
-            user: req.user.id,
+            patientId: treatment.patientId,
+            userId: req.user.id,
             action: 'treatment_created',
-            data: { protocol: treatment.recommendedProtocol, treatmentId: treatment._id },
+            data: { protocol: treatment.recommendedProtocol, treatmentId: treatment.id },
             previousHash,
             ipAddress: req.ip,
             userAgent: req.get('user-agent')
@@ -102,7 +111,7 @@ exports.createTreatment = async (req, res) => {
 // @access  Private
 exports.updateTreatment = async (req, res) => {
     try {
-        let treatment = await TreatmentPlan.findById(req.params.id);
+        let treatment = await TreatmentPlan.findByPk(req.params.id);
 
         if (!treatment) {
             return res.status(404).json({
@@ -111,16 +120,13 @@ exports.updateTreatment = async (req, res) => {
             });
         }
 
-        treatment = await TreatmentPlan.findByIdAndUpdate(req.params.id, req.body, {
-            new: true,
-            runValidators: true
-        });
+        await treatment.update(req.body);
 
         // Create audit log
         const previousHash = await AuditLog.getLastHash();
         await AuditLog.create({
-            patient: treatment.patient,
-            user: req.user.id,
+            patientId: treatment.patientId,
+            userId: req.user.id,
             action: 'treatment_updated',
             data: { updates: Object.keys(req.body) },
             previousHash,
@@ -145,7 +151,7 @@ exports.updateTreatment = async (req, res) => {
 // @access  Private (Oncologist only)
 exports.approveTreatment = async (req, res) => {
     try {
-        let treatment = await TreatmentPlan.findById(req.params.id);
+        let treatment = await TreatmentPlan.findByPk(req.params.id);
 
         if (!treatment) {
             return res.status(404).json({
@@ -154,19 +160,19 @@ exports.approveTreatment = async (req, res) => {
             });
         }
 
-        treatment.status = 'approved';
-        treatment.approvedBy = req.user.id;
-        treatment.approvalDate = Date.now();
-
-        await treatment.save();
+        await treatment.update({
+            status: 'approved',
+            approvedById: req.user.id,
+            approvalDate: Date.now()
+        });
 
         // Create audit log
         const previousHash = await AuditLog.getLastHash();
         await AuditLog.create({
-            patient: treatment.patient,
-            user: req.user.id,
+            patientId: treatment.patientId,
+            userId: req.user.id,
             action: 'treatment_approved',
-            data: { treatmentId: treatment._id, protocol: treatment.recommendedProtocol },
+            data: { treatmentId: treatment.id, protocol: treatment.recommendedProtocol },
             previousHash,
             ipAddress: req.ip,
             userAgent: req.get('user-agent')

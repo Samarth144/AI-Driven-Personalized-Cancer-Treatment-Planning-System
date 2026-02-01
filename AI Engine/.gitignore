@@ -1,7 +1,0 @@
-.venv
-__pycache__/
-*.pyc
-.env
-.cache/
-faiss_store/
-*.safetensors
