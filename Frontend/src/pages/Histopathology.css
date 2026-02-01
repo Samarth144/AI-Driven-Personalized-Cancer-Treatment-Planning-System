@@ -25,7 +25,7 @@
 
 .extracted-data {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: var(--spacing-lg);
 }
 
@@ -34,12 +34,6 @@
     padding: var(--spacing-lg);
     border-radius: var(--radius-lg);
     border-left: 4px solid var(--primary-blue);
-}
-
-.highlight {
-    background: rgba(255, 255, 0, 0.3);
-    padding: 0 0.25rem;
-    border-radius: 2px;
 }
 
 .card-glass {
@@ -56,12 +50,6 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: var(--spacing-lg);
-}
-
-/* Refactored inline styles */
-.histopathology-container {
-    padding-top: var(--spacing-2xl);
-    padding-bottom: var(--spacing-3xl);
 }
 
 .report-header {
@@ -84,18 +72,66 @@
     font-size: 0.875rem;
 }
 
-.card-content-sm {
-    margin-top: var(--spacing-sm);
-    font-size: 0.875rem;
+.file-input {
+  font-family: var(--font-sans);
+  background: var(--bg-elevated);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  cursor: pointer;
 }
 
-.classification-box {
+.file-input::file-selector-button {
+  background: var(--primary-blue);
+  color: white;
+  border: none;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  margin-right: var(--spacing-md);
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.file-input::file-selector-button:hover {
+  background: #0056b3;
+}
+
+.treatment-plan-content, .evidence-content {
+    background: #162032;
+    color: #F8FAFC;
     padding: var(--spacing-lg);
-    background: var(--bg-elevated);
-    border-radius: var(--radius-lg);
-    margin-top: var(--spacing-md);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--glass-border);
+    line-height: 1.7;
 }
 
-.implications-content {
-    line-height: 1.8;
+.treatment-plan-content h3 {
+    color: var(--primary-cyan);
+    margin-top: var(--spacing-lg);
+}
+
+.treatment-plan-content ul {
+    list-style-position: inside;
+    padding-left: var(--spacing-md);
+}
+
+.evidence-item {
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-lg);
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.evidence-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.evidence-path {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: var(--spacing-sm);
+    font-style: italic;
 }

@@ -1,9 +1,23 @@
 const express = require('express');
-const router = express.Router();
-const { uploadFile, uploadMultipleFiles } = require('../controllers/uploadController');
-const { protect } = require('../middleware/auth');
+const multer = require('multer');
+const path = require('path');
+const { uploadHistopathologyReport } = require('../controllers/uploadController');
 
-router.post('/', protect, uploadFile);
-router.post('/multiple', protect, uploadMultipleFiles);
+const router = express.Router();
+
+// Configure multer for file storage
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, '..', '..', 'reports'));
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ storage: storage });
+
+router.post('/histopathology', upload.single('histopathology_pdf'), uploadHistopathologyReport);
 
 module.exports = router;

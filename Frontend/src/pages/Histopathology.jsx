@@ -1,10 +1,46 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import './Histopathology.css';
 
 function Histopathology() {
   const navigate = useNavigate();
   const [analyzing, setAnalyzing] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState(null);
+
+  const handleFileChange = (event) => {
+    setSelectedFile(event.target.files[0]);
+    setAnalysisResult(null); // Reset previous results
+  };
+
+  const handleFileUpload = async () => {
+    if (!selectedFile) {
+      alert('Please select a file to upload.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('histopathology_pdf', selectedFile);
+
+    setUploading(true);
+    try {
+      const response = await axios.post('http://localhost:8000/api/uploads/histopathology', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      setAnalysisResult(response.data);
+      alert('File uploaded and analyzed successfully!');
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      const errorMessage = error.response?.data?.message || 'Error uploading file. Please try again.';
+      alert(errorMessage);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const analyzeReport = () => {
     setAnalyzing(true);
@@ -25,144 +61,78 @@ function Histopathology() {
         <div className="flex justify-between items-center mb-xl">
           <div>
             <h1>Histopathology Report Analysis</h1>
-            <p className="text-secondary">NLP-powered extraction of structured clinical data</p>
-          </div>
-          <button className="btn btn-primary" onClick={analyzeReport} disabled={analyzing}>
-            {analyzing ? 'Analyzing...' : '🔍 Analyze Report'}
-          </button>
-        </div>
-
-        {/* Report Viewer */}
-        <div className="report-viewer">
-          <h3 className="mb-lg">Pathology Report</h3>
-          <div className="report-content">
-            <h2 className="report-header">SURGICAL PATHOLOGY REPORT</h2>
-            <hr className="report-divider" />
-
-            <p><strong>Patient:</strong> John Doe | <strong>MRN:</strong> 123456 | <strong>Date:</strong> January 15, 2024</p>
-            <p><strong>Specimen:</strong> Right frontal lobe tumor resection</p>
-
-            <h3 className="report-section-title">DIAGNOSIS:</h3>
-            <p><span className="highlight">GLIOBLASTOMA, IDH-WILDTYPE (WHO GRADE IV)</span></p>
-
-            <h3 className="report-section-title">MICROSCOPIC DESCRIPTION:</h3>
-            <p>
-              Sections show a highly cellular glial neoplasm with marked nuclear pleomorphism and brisk mitotic activity
-              (approximately <span className="highlight">15 mitoses per 10 high-power fields</span>). Areas of <span className="highlight">microvascular proliferation</span> and <span className="highlight">necrosis with pseudopalisading</span> are present. The tumor cells are positive for GFAP and show nuclear
-              accumulation of p53 protein. <span className="highlight">IDH1 R132H immunostain is negative</span>.
-            </p>
-
-            <h3 className="report-section-title">IMMUNOHISTOCHEMISTRY:</h3>
-            <ul>
-              <li><span className="highlight">GFAP: Positive</span></li>
-              <li><span className="highlight">IDH1 R132H: Negative</span></li>
-              <li><span className="highlight">p53: Strong nuclear positivity ({'>'}50% of cells)</span></li>
-              <li><span className="highlight">Ki-67: High proliferation index (40%)</span></li>
-              <li>ATRX: Retained</li>
-            </ul>
-
-            <h3 className="report-section-title">MOLECULAR FINDINGS:</h3>
-            <ul>
-              <li><span className="highlight">MGMT promoter methylation: Present</span></li>
-              <li>EGFR amplification: Detected</li>
-              <li>1p/19q codeletion: Absent</li>
-            </ul>
-
-            <h3 className="report-section-title">COMMENT:</h3>
-            <p>
-              The morphologic and immunophenotypic features are consistent with <span className="highlight">glioblastoma, IDH-wildtype</span>,
-              according to the WHO 2021 classification. The presence of MGMT promoter methylation suggests potential benefit
-              from temozolomide chemotherapy.
-            </p>
+            <p className="text-secondary">Upload a report to have the AI extract key data and generate a treatment plan.</p>
           </div>
         </div>
 
-        {/* Extracted Structured Data */}
+        {/* PDF Uploader */}
         <div className="card-glass mb-xl">
-          <h3>AI-Extracted Structured Data</h3>
-          <p className="text-secondary mb-lg">Key clinical information extracted via NLP</p>
+          <h3>Upload Histopathology PDF</h3>
+          <p className="text-secondary mb-lg">The AI will analyze the report and suggest a treatment plan based on established guidelines.</p>
+          <div className="flex items-center gap-md">
+            <input type="file" accept="application/pdf" onChange={handleFileChange} className="file-input" />
+            <button className="btn btn-primary" onClick={handleFileUpload} disabled={uploading || !selectedFile}>
+              {uploading ? 'Uploading & Analyzing...' : 'Upload & Analyze'}
+            </button>
+          </div>
+        </div>
 
-          <div className="extracted-data">
-            <div className="data-card">
-              <div className="card-label">Diagnosis</div>
-              <h4 className="mt-sm">Glioblastoma</h4>
-              <span className="badge badge-error">WHO Grade IV</span>
-            </div>
-
-            <div className="data-card" style={{ borderLeftColor: 'var(--success)' }}>
-              <div className="card-label">IDH Status</div>
-              <h4 className="mt-sm">Wild-type</h4>
-              <span className="badge badge-info">IDH1 R132H Negative</span>
-            </div>
-
-            <div className="data-card" style={{ borderLeftColor: 'var(--warning)' }}>
-              <div className="card-label">MGMT Promoter</div>
-              <h4 className="mt-sm">Methylated</h4>
-              <span className="badge badge-success">TMZ Sensitive</span>
-            </div>
-
-            <div className="data-card" style={{ borderLeftColor: 'var(--error)' }}>
-              <div className="card-label">Ki-67 Index</div>
-              <h4 className="mt-sm">40%</h4>
-              <span className="badge badge-warning">High Proliferation</span>
-            </div>
-
-            <div className="data-card">
-              <div className="card-label">Mitotic Activity</div>
-              <h4 className="mt-sm">15/10 HPF</h4>
-              <span className="badge badge-error">Brisk</span>
-            </div>
-
-            <div className="data-card" style={{ borderLeftColor: 'var(--accent-cyan)' }}>
-              <div className="card-label">Key Features</div>
-              <div className="card-content-sm">
-                • Necrosis<br />
-                • Microvascular proliferation<br />
-                • p53 accumulation
+        {analysisResult && (
+          <>
+            {/* Extracted Structured Data */}
+            <div className="card-glass mb-xl">
+              <h3>AI-Extracted Structured Data</h3>
+              <p className="text-secondary mb-lg">Key clinical information extracted by the AI from the uploaded report.</p>
+              <div className="extracted-data">
+                {Object.entries(analysisResult.extracted_data).map(([key, value]) => (
+                  <div className="data-card" key={key}>
+                    <div className="card-label">{key.replace(/_/g, ' ').toUpperCase()}</div>
+                    <h4 className="mt-sm">{value}</h4>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* WHO Classification */}
-        <div className="grid-2 mb-xl">
-          <div className="card-glass">
-            <h3>WHO 2021 Classification</h3>
-            <div className="classification-box">
-              <h4>Glioblastoma, IDH-wildtype</h4>
-              <p className="text-secondary mt-md">
-                <strong>CNS WHO Grade:</strong> 4<br />
-                <strong>Molecular Subtype:</strong> IDH-wildtype<br />
-                <strong>Prognosis:</strong> Poor (median OS 12-18 months)<br />
-                <strong>Treatment:</strong> Maximal safe resection + RT + TMZ
-              </p>
+            {/* AI Generated Treatment Plan */}
+            <div className="card-glass mb-xl">
+              <h3>AI-Generated Treatment Plan</h3>
+              <div className="treatment-plan-content" dangerouslySetInnerHTML={{ __html: analysisResult.plan }} />
+            </div>
+
+            {/* Evidence Section */}
+            <div className="card-glass mb-xl">
+              <h3>Evidence from Clinical Guidelines</h3>
+              <div className="evidence-content">
+                {analysisResult.evidence.map((item, index) => (
+                  <div key={index} className="evidence-item">
+                    <p>{item.text}</p>
+                    <span className="evidence-path">{item.path}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Report Viewer (Placeholder) */}
+        {!analysisResult && (
+          <div className="report-viewer">
+            <h3 className="mb-lg">Pathology Report</h3>
+            <div className="report-content">
+              <h2 className="report-header">SURGICAL PATHOLOGY REPORT</h2>
+              <hr className="report-divider" />
+              <p><i>Upload a report to begin analysis. The original report content will be replaced by the AI's findings.</i></p>
             </div>
           </div>
-
-          <div className="card-glass">
-            <h3>Clinical Implications</h3>
-            <div className="implications-content">
-              <p><strong>Diagnosis Confirmed:</strong> Glioblastoma, WHO Grade IV</p>
-
-              <p className="mt-md"><strong>Favorable Factor:</strong> MGMT promoter methylation suggests good response to temozolomide chemotherapy.</p>
-
-              <p className="mt-md"><strong>Unfavorable Factors:</strong> IDH-wildtype status and high Ki-67 index indicate aggressive tumor biology.</p>
-
-              <p className="mt-md"><strong>Recommendation:</strong> Standard Stupp protocol (surgery + concurrent chemoradiation + adjuvant TMZ)</p>
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* Action Buttons */}
         <div className="flex gap-md justify-center">
           <button className="btn btn-secondary" onClick={() => navigate('/genomic-analysis')}>
             ← Back to Genomic Analysis
           </button>
-          <button className="btn btn-primary" onClick={() => navigate('/treatment-plan')}>
-            View Treatment Plan →
-          </button>
-          <button className="btn btn-outline" onClick={downloadReport}>
-            Download Report
+          <button className="btn btn-primary" onClick={() => navigate('/treatment-plan')} disabled={!analysisResult}>
+            View Full Treatment Plan →
           </button>
         </div>
       </div>
@@ -171,3 +141,4 @@ function Histopathology() {
 }
 
 export default Histopathology;
+
