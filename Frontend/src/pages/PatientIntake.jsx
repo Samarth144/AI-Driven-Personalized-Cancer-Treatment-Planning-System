@@ -223,7 +223,7 @@ const PatientIntake = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({ 
-    name: '', dob: '', gender: '', mrn: '', contact: '', diagnosisDate: '',
+    name: '', dob: '', gender: '', mrn: '', contact: '', diagnosisDate: '', pathologyReport: '', pathologyFile: null,
     idh1: 'Unknown', mgmt: 'Unknown', atrx: 'Unknown', codeletion: 'Unknown',
     kps: 100, ecog: 0, symptoms: '', comorbidities: '' 
   });
@@ -248,6 +248,17 @@ const PatientIntake = () => {
               <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
                 <div className="id-card">
                   <div className="holo-bar"></div>
+                  
+                  {/* Holographic Image Portal */}
+                  <div className="id-card-portal">
+                    <div className="portal-circle"></div>
+                    <img 
+                      src="https://images.unsplash.com/photo-1559757175-0eb30cd8c063?auto=format&fit=crop&w=400&q=80" 
+                      alt="Neural Scan" 
+                      className="portal-image" 
+                    />
+                  </div>
+
                   <div className="id-header">
                     <div className="id-avatar"><BadgeOutlinedIcon /></div>
                     <div>
@@ -308,6 +319,17 @@ const PatientIntake = () => {
                             />
                           </Grid>
                         </Grid>
+                        <Box sx={{ mt: 2 }}>
+                          <Typography className="field-label">Clinical Pathology Report (PDF/IMG)</Typography>
+                          <UploadZone 
+                            type="PATHOLOGY" 
+                            label="Upload biopsy or surgical report" 
+                            file={formData.pathologyFile} 
+                            onUpload={(_, file) => handleChange('pathologyFile', file)} 
+                            onDelete={() => handleChange('pathologyFile', null)} 
+                            index={4} 
+                          />
+                        </Box>
                       </div>
                     </Grid>
                     <Grid item xs={12} md={3}>
