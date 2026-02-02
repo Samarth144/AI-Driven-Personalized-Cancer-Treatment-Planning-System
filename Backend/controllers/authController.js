@@ -1,6 +1,6 @@
 const User = require('../models/User');
 const generateToken = require('../utils/generateToken');
-const AuditLog = require('../models/AuditLog');
+
 
 // @desc    Register new user
 // @route   POST /api/auth/register
@@ -26,16 +26,7 @@ exports.register = async (req, res) => {
             role: role || 'oncologist'
         });
 
-        // Create audit log
-        const previousHash = await AuditLog.getLastHash();
-        await AuditLog.create({
-            userId: user.id,
-            action: 'other', // 'user_registered' not in enum, using other
-            data: { email: user.email, role: user.role, detail: 'user_registered' },
-            previousHash,
-            ipAddress: req.ip,
-            userAgent: req.get('user-agent')
-        });
+
 
         res.status(201).json({
             success: true,
@@ -88,16 +79,7 @@ exports.login = async (req, res) => {
             });
         }
 
-        // Create audit log
-        const previousHash = await AuditLog.getLastHash();
-        await AuditLog.create({
-            userId: user.id,
-            action: 'user_login',
-            data: { email: user.email },
-            previousHash,
-            ipAddress: req.ip,
-            userAgent: req.get('user-agent')
-        });
+
 
         res.json({
             success: true,

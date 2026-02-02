@@ -1,7 +1,7 @@
 const TreatmentPlan = require('../models/TreatmentPlan');
 const Patient = require('../models/Patient');
 const User = require('../models/User');
-const AuditLog = require('../models/AuditLog');
+
 const { generateMockAnalysis } = require('../utils/aiSimulator');
 
 // @desc    Get all treatment plans for a patient
@@ -82,17 +82,7 @@ exports.createTreatment = async (req, res) => {
 
         const treatment = await TreatmentPlan.create(req.body);
 
-        // Create audit log
-        const previousHash = await AuditLog.getLastHash();
-        await AuditLog.create({
-            patientId: treatment.patientId,
-            userId: req.user.id,
-            action: 'treatment_created',
-            data: { protocol: treatment.recommendedProtocol, treatmentId: treatment.id },
-            previousHash,
-            ipAddress: req.ip,
-            userAgent: req.get('user-agent')
-        });
+
 
         res.status(201).json({
             success: true,
@@ -122,17 +112,7 @@ exports.updateTreatment = async (req, res) => {
 
         await treatment.update(req.body);
 
-        // Create audit log
-        const previousHash = await AuditLog.getLastHash();
-        await AuditLog.create({
-            patientId: treatment.patientId,
-            userId: req.user.id,
-            action: 'treatment_updated',
-            data: { updates: Object.keys(req.body) },
-            previousHash,
-            ipAddress: req.ip,
-            userAgent: req.get('user-agent')
-        });
+
 
         res.json({
             success: true,
@@ -166,17 +146,7 @@ exports.approveTreatment = async (req, res) => {
             approvalDate: Date.now()
         });
 
-        // Create audit log
-        const previousHash = await AuditLog.getLastHash();
-        await AuditLog.create({
-            patientId: treatment.patientId,
-            userId: req.user.id,
-            action: 'treatment_approved',
-            data: { treatmentId: treatment.id, protocol: treatment.recommendedProtocol },
-            previousHash,
-            ipAddress: req.ip,
-            userAgent: req.get('user-agent')
-        });
+
 
         res.json({
             success: true,

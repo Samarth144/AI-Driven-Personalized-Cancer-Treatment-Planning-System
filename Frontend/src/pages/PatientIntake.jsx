@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { 
   Box, Grid, Typography, TextField, Button, InputAdornment, IconButton, LinearProgress, Slider, Chip, Divider
@@ -31,12 +32,61 @@ import EditIcon from '@mui/icons-material/Edit';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import './PatientIntake.css';
 
-const markers = [
-  { id: 'idh1', label: 'IDH1/2 Status', sub: 'Isocitrate Dehydrogenase', icon: <BiotechIcon />, options: ['Mutant', 'Wild-type', 'Unknown'] },
-  { id: 'mgmt', label: 'MGMT Methylation', sub: 'Promoter Region', icon: <ScatterPlotIcon />, options: ['Methylated', 'Unmethylated', 'Unknown'] },
-  { id: 'atrx', label: 'ATRX Status', sub: 'Alpha Thalassemia', icon: <RemoveCircleOutlineIcon />, options: ['Lost', 'Retained', 'Unknown'] },
-  { id: 'codeletion', label: '1p/19q Co-deletion', sub: 'Chromosome Arms', icon: <ContentCutIcon />, options: ['Present', 'Absent', 'Unknown'] }
-];
+const GENOMIC_MARKERS = {
+  Brain: [
+    { id: 'idh1', label: 'IDH1 Status', sub: 'Isocitrate Dehydrogenase', icon: <BiotechIcon />, options: ['Mutated', 'Wild Type', 'Unknown'] },
+    { id: 'mgmt', label: 'MGMT Methylation', sub: 'Promoter Region', icon: <ScatterPlotIcon />, options: ['Methylated', 'Unmethylated', 'Unknown'] }
+  ],
+  Breast: [
+    { id: 'er', label: 'ER (ESR1)', sub: 'Estrogen Receptor', icon: <FavoriteBorderIcon />, options: ['Positive', 'Negative', 'Unknown'] },
+    { id: 'pr', label: 'PR (PGR)', sub: 'Progesterone Receptor', icon: <FavoriteBorderIcon />, options: ['Positive', 'Negative', 'Unknown'] },
+    { id: 'her2', label: 'HER2 (ERBB2)', sub: 'Human Epidermal Growth Factor', icon: <BiotechIcon />, options: ['Positive', 'Negative', 'Equivocal', 'Unknown'] },
+    { id: 'brca', label: 'BRCA Status', sub: 'Breast Cancer Gene', icon: <ScatterPlotIcon />, options: ['Mutated', 'Wild Type', 'Unknown'] },
+    { id: 'pdl1', label: 'PD-L1 (CD274)', sub: 'Programmed Death-Ligand 1', icon: <MedicalServicesIcon />, options: ['Positive', 'Negative', 'Not Tested', 'Unknown'] }
+  ],
+  Lung: [
+    { id: 'egfr', label: 'EGFR Mutation', sub: 'Epidermal Growth Factor', icon: <BiotechIcon />, options: ['Mutated', 'Wild Type', 'Unknown'] },
+    { id: 'kras', label: 'KRAS Mutation', sub: 'Kirsten Rat Sarcoma', icon: <ScatterPlotIcon />, options: ['Mutated', 'Wild Type', 'Unknown'] },
+    { id: 'alk', label: 'ALK Translocation', sub: 'Anaplastic Lymphoma Kinase', icon: <ContentCutIcon />, options: ['Positive', 'Negative', 'Unknown'] },
+    { id: 'ros1', label: 'ROS1 Rearrangement', sub: 'Proto-oncogene Tyrosine', icon: <RemoveCircleOutlineIcon />, options: ['Positive', 'Negative', 'Unknown'] },
+    { id: 'pdl1', label: 'PD-L1 Expression', sub: 'Immune Checkpoint', icon: <MedicalServicesIcon />, options: ['<1%', '1–49%', '≥50%', 'Unknown'] }
+  ],
+  Liver: [
+    { id: 'afp', label: 'AFP Biomarker', sub: 'Alpha-Fetoprotein', icon: <BiotechIcon />, options: ['Normal', 'Elevated', 'Very High', 'Unknown'] }
+  ],
+  Pancreas: [
+    { id: 'brca', label: 'BRCA Status', sub: 'Breast Cancer Gene', icon: <ScatterPlotIcon />, options: ['Mutated', 'Wild Type', 'Unknown'] }
+  ]
+};
+
+const IMAGING_PROTOCOLS = {
+  Brain: [
+    { id: 'T1', label: 'T1-Weighted Sequence' },
+    { id: 'T1ce', label: 'T1-Contrast Enhanced' },
+    { id: 'T2', label: 'T2-Weighted Sequence' },
+    { id: 'FLAIR', label: 'Fluid Attenuated Inversion Recovery' }
+  ],
+  Breast: [
+    { id: 'T1', label: 'T1-Weighted' },
+    { id: 'T1_Contrast', label: 'T1 with Contrast (Dynamic)' },
+    { id: 'Fat_Suppressed', label: 'Fat-Suppressed Sequence' }
+  ],
+  Lung: [
+    { id: 'CT_Scan', label: 'Chest CT Scan (Primary)' }
+  ],
+  Liver: [
+    { id: 'T1', label: 'T1-Weighted' },
+    { id: 'T2', label: 'T2-Weighted' },
+    { id: 'DWI', label: 'Diffusion-Weighted Imaging' },
+    { id: 'Contrast_Phases', label: 'Contrast Phases (Arterial/Venous)' }
+  ],
+  Pancreas: [
+    { id: 'CT_Scan', label: 'Abdominal CT (Primary)' },
+    { id: 'T1', label: 'T1-Weighted' },
+    { id: 'T2', label: 'T2-Weighted' },
+    { id: 'MRCP', label: 'MRCP Sequence' }
+  ]
+};
 
 const getKPSColor = (val) => val >= 80 ? '#059789' : val >= 50 ? '#F59E0B' : '#EF4444';
 const getECOGDescription = (val) => {
@@ -224,10 +274,14 @@ const PatientIntake = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({ 
     name: '', dob: '', gender: '', mrn: '', contact: '', diagnosisDate: '', pathologyReport: '', pathologyFile: null,
-    idh1: 'Unknown', mgmt: 'Unknown', atrx: 'Unknown', codeletion: 'Unknown',
+    cancerType: 'Brain',
+    idh1: 'Unknown', mgmt: 'Unknown',
+    er: 'Unknown', pr: 'Unknown', her2: 'Unknown', brca: 'Unknown', pdl1: 'Unknown',
+    egfr: 'Unknown', alk: 'Unknown', ros1: 'Unknown', kras: 'Unknown', afp: 'Unknown',
     kps: 100, ecog: 0, symptoms: '', comorbidities: '' 
   });
   const [uploadedFiles, setUploadedFiles] = useState({});
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (field, value) => setFormData({ ...formData, [field]: value });
   const handleMRIUpload = (type, file) => setUploadedFiles(prev => ({ ...prev, [`mri_${type}`]: file }));
@@ -236,6 +290,37 @@ const PatientIntake = () => {
     delete newFiles[`mri_${type}`];
     return newFiles;
   });
+
+  const handleCompleteIntake = async () => {
+    setLoading(true);
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            alert("Authentication required. Please login.");
+            navigate('/login');
+            return;
+        }
+
+        // Save Patient Data
+        const response = await axios.post('http://localhost:8000/api/patients', formData, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (response.data.success) {
+            const patientId = response.data.data.id;
+            // Pass patientId to MRI Analysis via URL
+            navigate(`/mri-analysis?patientId=${patientId}`);
+        } else {
+            throw new Error(response.data.message || 'Failed to save patient record');
+        }
+
+    } catch (err) {
+        console.error("Intake Error:", err);
+        alert("Error saving patient record: " + (err.response?.data?.message || err.message));
+    } finally {
+        setLoading(false);
+    }
+  };
 
   return (
     <Box className="intake-container">
@@ -247,50 +332,20 @@ const PatientIntake = () => {
                 <Typography variant="h3" className="page-title">NEW CASE</Typography>
                 <Typography variant="body1" className="page-subtitle">Initialize multimodal data collection.</Typography>
                 <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                  <div className="preview-layout-row">
-                    <div className="id-card">
-                      <div className="holo-bar"></div>
-                      <div className="id-header">
-                        <div className="id-avatar"><BadgeOutlinedIcon /></div>
-                        <div>
-                          <span className="id-label">PATIENT PREVIEW</span>
-                          <h4 className="id-name">{formData.name || "ENTER NAME..."}</h4>
-                        </div>
-                      </div>
-                      <div className="id-details">
-                        <div className="id-field"><span>MRN</span><p>{formData.mrn || "---"}</p></div>
-                        <div className="id-field"><span>DOB</span><p>{formData.dob || "--/--/--"}</p></div>
-                        <div className="id-field"><span>CONTACT</span><p>{formData.contact || "---"}</p></div>
-                        <div className="id-field"><span>DIAGNOSIS</span><p>{formData.diagnosisDate || "--/--/--"}</p></div>
+                  <div className="id-card">
+                    <div className="holo-bar"></div>
+                    <div className="id-header">
+                      <div className="id-avatar"><BadgeOutlinedIcon /></div>
+                      <div>
+                        <span className="id-label">PATIENT PREVIEW</span>
+                        <h4 className="id-name">{formData.name || "ENTER NAME..."}</h4>
                       </div>
                     </div>
-
-                    {/* Biometric Stack Parallel to ID Card */}
-                    <div className="biometric-stack-external">
-                      <div className="biometric-img-container biometric-img-top">
-                        <img 
-                          src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80" 
-                          alt="Patient Profile" 
-                        />
-                        <div className="bio-tag-top">ID PHOTO</div>
-                      </div>
-
-                      <div className="biometric-img-container biometric-img-bottom">
-                        <img 
-                          src="https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?auto=format&fit=crop&w=400&q=80" 
-                          alt="Biometric Scan" 
-                        />
-                        <div className="bio-tag-bottom">
-                          <FingerprintIcon sx={{ fontSize: 12 }} />
-                          <span>BIOMETRIC</span>
-                        </div>
-                      </div>
-
-                      <motion.div 
-                        animate={{ opacity: [0.3, 1, 0.3] }}
-                        transition={{ duration: 3, repeat: Infinity }}
-                        className="biometric-glow-line"
-                      />
+                    <div className="id-details">
+                      <div className="id-field"><span>MRN</span><p>{formData.mrn || "---"}</p></div>
+                      <div className="id-field"><span>DOB</span><p>{formData.dob || "--/--/--"}</p></div>
+                      <div className="id-field"><span>CONTACT</span><p>{formData.contact || "---"}</p></div>
+                      <div className="id-field"><span>DIAGNOSIS</span><p>{formData.diagnosisDate || "--/--/--"}</p></div>
                     </div>
                   </div>
                 </motion.div>
@@ -326,14 +381,14 @@ const PatientIntake = () => {
                         />
                         <Grid container spacing={3}>
                           <Grid item xs={6}>
-                            <TextField fullWidth type="date" label="Date of Birth" className="tech-input"
+                            <TextField fullWidth type="date" label="Date of Birth" className="tech-input fixed-width"
                               value={formData.dob} onChange={(e) => handleChange('dob', e.target.value)}
                               InputLabelProps={{ shrink: true }}
                               InputProps={{ startAdornment: <InputAdornment position="start"><CalendarMonthOutlinedIcon /></InputAdornment> }}
                             />
                           </Grid>
                           <Grid item xs={6}>
-                            <TextField fullWidth type="date" label="Date of Diagnosis" className="tech-input"
+                            <TextField fullWidth type="date" label="Date of Diagnosis" className="tech-input fixed-width"
                               value={formData.diagnosisDate} onChange={(e) => handleChange('diagnosisDate', e.target.value)}
                               InputLabelProps={{ shrink: true }}
                               InputProps={{ startAdornment: <InputAdornment position="start"><EventAvailableOutlinedIcon /></InputAdornment> }}
@@ -356,9 +411,9 @@ const PatientIntake = () => {
                     <Grid item xs={12} md={3}>
                       <Typography className="field-label">Biological Sex / Gender</Typography>
                       <div className="gender-selection-col">
-                        <GenderTile label="MALE" icon={<MaleIcon />} selected={formData.gender === 'Male'} onClick={() => handleChange('gender', 'Male')} />
-                        <GenderTile label="FEMALE" icon={<FemaleIcon />} selected={formData.gender === 'Female'} onClick={() => handleChange('gender', 'Female')} />
-                        <GenderTile label="OTHER" icon={<TransgenderIcon />} selected={formData.gender === 'Other'} onClick={() => handleChange('gender', 'Other')} />
+                        <GenderTile label="MALE" icon={<MaleIcon />} selected={formData.gender === 'male'} onClick={() => handleChange('gender', 'male')} />
+                        <GenderTile label="FEMALE" icon={<FemaleIcon />} selected={formData.gender === 'female'} onClick={() => handleChange('gender', 'female')} />
+                        <GenderTile label="OTHER" icon={<TransgenderIcon />} selected={formData.gender === 'other'} onClick={() => handleChange('gender', 'other')} />
                       </div>
                     </Grid>
                   </Grid>
@@ -374,11 +429,38 @@ const PatientIntake = () => {
                     <Typography variant="h5">02 // MRI ACQUISITION</Typography>
                     <span className="req-badge">SUPPORTED: .NII, .DCM, .GZ</span>
                   </div>
+
+                  <Box sx={{ mb: 4 }}>
+                    <Typography className="field-label" sx={{ mb: 2 }}>SELECT CANCER TYPE FOR SPECIALIZED SEGMENTATION</Typography>
+                    <div className="cancer-type-selector">
+                      {['Brain', 'Breast', 'Liver', 'Pancreas', 'Lung'].map((type) => (
+                        <motion.div key={type} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                          <Button
+                            variant={formData.cancerType === type ? "contained" : "outlined"}
+                            onClick={() => handleChange('cancerType', type)}
+                            className={`tech-btn-choice ${formData.cancerType === type ? 'active' : ''}`}
+                            sx={{ minWidth: '120px' }}
+                          >
+                            {type}
+                          </Button>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </Box>
+
                   <Grid container spacing={4} className="mri-grid">
-                    <Grid item xs={12} className="mri-grid-item"><UploadZone type="T1" label="T1-Weighted Sequence" file={uploadedFiles['mri_T1']} onUpload={handleMRIUpload} onDelete={handleMRIDelete} index={0} /></Grid>
-                    <Grid item xs={12} className="mri-grid-item"><UploadZone type="T1ce" label="T1-Contrast Enhanced" file={uploadedFiles['mri_T1ce']} onUpload={handleMRIUpload} onDelete={handleMRIDelete} index={1} /></Grid>
-                    <Grid item xs={12} className="mri-grid-item"><UploadZone type="T2" label="T2-Weighted Sequence" file={uploadedFiles['mri_T2']} onUpload={handleMRIUpload} onDelete={handleMRIDelete} index={2} /></Grid>
-                    <Grid item xs={12} className="mri-grid-item"><UploadZone type="FLAIR" label="Fluid Attenuated Inversion Recovery" file={uploadedFiles['mri_FLAIR']} onUpload={handleMRIUpload} onDelete={handleMRIDelete} index={3} /></Grid>
+                    {(IMAGING_PROTOCOLS[formData.cancerType] || IMAGING_PROTOCOLS.Brain).map((protocol, index) => (
+                      <Grid item xs={12} className="mri-grid-item" key={protocol.id}>
+                        <UploadZone 
+                          type={protocol.id.replace('_', ' ')} 
+                          label={protocol.label} 
+                          file={uploadedFiles[`mri_${protocol.id}`]} 
+                          onUpload={(_, file) => handleMRIUpload(protocol.id, file)} 
+                          onDelete={() => handleMRIDelete(protocol.id)} 
+                          index={index} 
+                        />
+                      </Grid>
+                    ))}
                   </Grid>
                   <div className="terminal-footer">
                     <Button variant="text" className="tech-btn-text" onClick={() => setCurrentStep(1)}>BACK</Button>
@@ -399,7 +481,7 @@ const PatientIntake = () => {
                     </Button>
                   </div>
                   <Grid container spacing={3}>
-                    {markers.map((m) => (
+                    {(GENOMIC_MARKERS[formData.cancerType] || GENOMIC_MARKERS.Brain).map((m) => (
                       <Grid item xs={12} key={m.id}>
                         <MolecularSwitch 
                           label={m.label} sub={m.sub} icon={m.icon} options={m.options} 
@@ -521,22 +603,26 @@ const PatientIntake = () => {
                     {/* 2. MRI ACQUISITION BLOCK */}
                     <Grid item xs={12} md={4}>
                       <ReviewBlock 
-                        title="MRI SEQUENCES" 
+                        title="IMAGING DATA" 
                         icon={<ViewInArIcon />} 
                         status={Object.keys(uploadedFiles).filter(k => k.startsWith('mri_')).length === 0 ? 'error' : 'valid'}
                         onEdit={() => setCurrentStep(2)}
                       >
+                        <Box sx={{ mb: 2 }}>
+                          <span className="data-label">CANCER TYPE</span>
+                          <Typography className="data-value" style={{ color: '#00F0FF', fontWeight: 700 }}>{formData.cancerType.toUpperCase()}</Typography>
+                        </Box>
                         {Object.keys(uploadedFiles).filter(k => k.startsWith('mri_')).length === 0 ? (
                           <div className="error-display">
                             <ErrorOutlineIcon className="error-icon-big" />
                             <Typography variant="body2">NO SEQUENCES DETECTED</Typography>
-                            <span className="error-sub">T1, T1ce, T2, FLAIR Required</span>
+                            <span className="error-sub">Required: {(IMAGING_PROTOCOLS[formData.cancerType] || []).map(p => p.id).join(', ')}</span>
                           </div>
                         ) : (
                           <div className="mri-review-list">
-                            {['T1', 'T1ce', 'T2', 'FLAIR'].map(seq => (
-                              <div key={seq} className={`mri-seq-badge ${uploadedFiles[`mri_${seq}`] ? 'active' : 'inactive'}`}>
-                                {seq}
+                            {(IMAGING_PROTOCOLS[formData.cancerType] || []).map(seq => (
+                              <div key={seq.id} className={`mri-seq-badge ${uploadedFiles[`mri_${seq.id}`] ? 'active' : 'inactive'}`}>
+                                {seq.id.replace('_', ' ')}
                               </div>
                             ))}
                           </div>
@@ -548,15 +634,15 @@ const PatientIntake = () => {
                     <Grid item xs={12} md={4}>
                       <ReviewBlock title="GENOMIC PROFILE" icon={<BiotechIcon />} onEdit={() => setCurrentStep(3)}>
                         <div className="genomic-review-stack">
-                          <div className="review-item-between">
-                            <Typography variant="body2">IDH1 Status</Typography>
-                            <StatusChip label={formData.idh1} type={formData.idh1} />
-                          </div>
-                          <Divider className="review-divider" />
-                          <div className="review-item-between">
-                            <Typography variant="body2">MGMT Methylation</Typography>
-                            <StatusChip label={formData.mgmt} type={formData.mgmt} />
-                          </div>
+                          {(GENOMIC_MARKERS[formData.cancerType] || GENOMIC_MARKERS.Brain).map((m, index, arr) => (
+                            <React.Fragment key={m.id}>
+                              <div className="review-item-between">
+                                <Typography variant="body2">{m.label}</Typography>
+                                <StatusChip label={formData[m.id]} type={formData[m.id]} />
+                              </div>
+                              {index < arr.length - 1 && <Divider className="review-divider" />}
+                            </React.Fragment>
+                          ))}
                         </div>
                       </ReviewBlock>
                     </Grid>
@@ -573,11 +659,11 @@ const PatientIntake = () => {
                     <Button
                       variant="contained"
                       className="tech-btn-launch"
-                      disabled={Object.keys(uploadedFiles).filter(k => k.startsWith('mri_')).length === 0}
+                      disabled={Object.keys(uploadedFiles).filter(k => k.startsWith('mri_')).length === 0 || loading}
                       endIcon={<PlayArrowIcon />}
-                      onClick={() => navigate('/mri-analysis')}
+                      onClick={handleCompleteIntake}
                     >
-                      {Object.keys(uploadedFiles).filter(k => k.startsWith('mri_')).length === 0 ? 'AWAITING DATA...' : 'INITIALIZE TREATMENT ENGINE'}
+                      {loading ? 'SAVING DATA...' : (Object.keys(uploadedFiles).filter(k => k.startsWith('mri_')).length === 0 ? 'AWAITING DATA...' : 'INITIALIZE TREATMENT ENGINE')}
                     </Button>
                   </div>
                 </div>

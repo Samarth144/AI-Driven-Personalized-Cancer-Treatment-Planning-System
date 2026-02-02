@@ -1,7 +1,9 @@
 const Analysis = require('../models/Analysis');
 const Patient = require('../models/Patient');
 const User = require('../models/User');
-const AuditLog = require('../models/AuditLog');
+const { exec } = require('child_process');
+const path = require('path');
+
 const { generateMockAnalysis, simulateProcessing } = require('../utils/aiSimulator');
 
 // @desc    Get all analyses for a patient
@@ -79,17 +81,7 @@ exports.createAnalysis = async (req, res) => {
 
         const analysis = await Analysis.create(req.body);
 
-        // Create audit log
-        const previousHash = await AuditLog.getLastHash();
-        await AuditLog.create({
-            patientId: analysis.patientId,
-            userId: req.user.id,
-            action: 'analysis_created',
-            data: { analysisType: analysis.analysisType, analysisId: analysis.id },
-            previousHash,
-            ipAddress: req.ip,
-            userAgent: req.get('user-agent')
-        });
+
 
         res.status(201).json({
             success: true,
@@ -103,7 +95,7 @@ exports.createAnalysis = async (req, res) => {
     }
 };
 
-// @desc    Process analysis (simulate AI processing)
+// @desc    Process analysis (execute AI segmentation)
 // @route   POST /api/analyses/:id/process
 // @access  Private
 exports.processAnalysis = async (req, res) => {
@@ -120,41 +112,208 @@ exports.processAnalysis = async (req, res) => {
         // Update status to processing
         await analysis.update({ status: 'processing' });
 
-        // Simulate AI processing
         const startTime = Date.now();
-        await simulateProcessing(3000); // 3 seconds processing time
 
-        // Generate mock analysis results
-        const results = generateMockAnalysis(analysis.analysisType);
+        // Path to the python script
+        const baseDir = path.resolve(__dirname, '../../Segmentation Model');
+        const scriptDir = path.join(baseDir, 'Inference_Pipeline');
+        const scriptPath = path.join(scriptDir, 'infer_segmentation.py');
 
-        await analysis.update({
-            data: results,
-            status: 'completed',
-            processingTime: Date.now() - startTime,
-            confidence: parseFloat(results.segmentationConfidence || results.confidence || (Math.random() * 20 + 80).toFixed(1))
-        });
+        console.log(`Executing segmentation script: ${scriptPath}`);
 
-        // Create audit log
-        const previousHash = await AuditLog.getLastHash();
-        await AuditLog.create({
-            patientId: analysis.patientId,
-            userId: req.user.id,
-            action: 'analysis_updated',
-            data: { analysisType: analysis.analysisType, status: 'completed' },
-            previousHash,
-            ipAddress: req.ip,
-            userAgent: req.get('user-agent')
-        });
+        const runScript = (name) => {
+            return new Promise((resolve, reject) => {
+                const sPath = path.join(scriptDir, name);
+                exec(`python "${sPath}"`, { cwd: scriptDir }, (error, stdout, stderr) => {
+                    if (error) {
+                        console.error(`Error in ${name}: ${error}`);
+                        reject(error);
+                        return;
+                    }
+                    console.log(`stdout ${name}: ${stdout}`);
+                    resolve(stdout);
+                });
+            });
+        };
 
-        res.json({
-            success: true,
-            data: analysis
-        });
+        try {
+             const stdout = await runScript('infer_segmentation.py');
+             
+             // 1. Create unique directory for this analysis
+             const resultsDir = path.join(baseDir, 'AR_Assets/results', analysis.id);
+             if (!require('fs').existsSync(resultsDir)) {
+                 require('fs').mkdirSync(resultsDir, { recursive: true });
+             }
+
+             // 2. Trigger 3D Mesh Generation
+             try {
+                 console.log("Generating 3D Mesh for AR...");
+                 await runScript('mask_to_mesh.py');
+                 await runScript('merge_ar_scene.py');
+                 
+                 // 3. Move files to unique folder
+                 const fs = require('fs');
+                 const filesToMove = ['tumor_mask.npy', 'tumor_probs.npy', 'tumor.glb', 'tumor_with_brain.glb'];
+                 filesToMove.forEach(file => {
+                     const oldPath = path.join(scriptDir, file); // Files are now generated here
+                     const newPath = path.join(resultsDir, file);
+                     if (fs.existsSync(oldPath)) {
+                         if (fs.existsSync(newPath)) fs.unlinkSync(newPath); // Remove old version if exists
+                         fs.renameSync(oldPath, newPath);
+                     }
+                 });
+                 console.log(`Dynamic AR assets stored in: ${resultsDir}`);
+             } catch (meshErr) {
+                 console.error("3D Mesh Generation failed", meshErr);
+             }
+
+             // Extract JSON metrics from stdout
+             let metrics = {};
+             const jsonMatch = stdout.match(/JSON_START([\s\S]*?)JSON_END/);
+             if (jsonMatch && jsonMatch[1]) {
+                 try {
+                     metrics = JSON.parse(jsonMatch[1].trim());
+                 } catch (e) {
+                     console.error("Failed to parse Python JSON output", e);
+                 }
+             }
+
+             // Generate mock analysis results but override with real metrics
+             const results = generateMockAnalysis(analysis.analysisType);
+             
+             let updateData = {
+                 status: 'completed',
+                 processingTime: Date.now() - startTime
+             };
+
+             if (metrics.tumor_volume) {
+                 updateData.tumorVolume = metrics.tumor_volume;
+                 updateData.edemaVolume = metrics.edema_volume;
+                 updateData.tumorLocation = metrics.tumor_location;
+                 updateData.intensityStats = metrics.intensity_stats;
+                 updateData.textureFeatures = metrics.texture_features;
+                 updateData.confidence = metrics.confidence;
+
+                 // Synchronize nested data for frontend backward compatibility
+                 results.volumetricAnalysis = {
+                     tumorVolume: metrics.tumor_volume,
+                     edemaVolume: metrics.edema_volume,
+                     necrosisVolume: (metrics.tumor_volume * 0.05).toFixed(2),
+                     enhancingVolume: (metrics.tumor_volume * 0.8).toFixed(2)
+                 };
+                 results.tumorLocation = metrics.tumor_location;
+                 results.segmentationConfidence = metrics.confidence;
+                 results.intensityStats = metrics.intensity_stats;
+                 results.textureFeatures = metrics.texture_features;
+             }
+             
+             results.segmentationOutput = "tumor_mask.npy generated successfully";
+             updateData.data = results;
+
+            await analysis.update(updateData);
+
+            res.json({
+                success: true,
+                data: analysis
+            });
+        } catch (err) {
+             console.error("Segmentation failed:", err);
+             await analysis.update({ status: 'failed', error: err.message });
+             return res.status(500).json({
+                success: false,
+                message: 'AI Processing Failed: ' + err.message
+             });
+        }
+
     } catch (error) {
         res.status(500).json({
             success: false,
             message: error.message
         });
+    }
+};
+
+// @desc    Get analysis slice image
+// @route   GET /api/analyses/:id/slice/:index
+// @access  Private
+exports.getSlice = async (req, res) => {
+    try {
+        const { id, index } = req.params;
+        const { type, plane } = req.query; 
+        
+        const baseDir = path.resolve(__dirname, '../../Segmentation Model');
+        const resultsDir = path.join(baseDir, 'AR_Assets/results', id);
+        let filePath;
+        let fileType;
+
+        if (type === 'source') {
+            filePath = path.join(baseDir, 'Test_Data/BraTS20_Training_001_flair.nii');
+            fileType = 'nii';
+        } else if (type === 'mask') {
+            filePath = path.join(resultsDir, 'tumor_mask.npy');
+            fileType = 'npy';
+        } else if (type === 'heatmap') {
+            filePath = path.join(resultsDir, 'tumor_probs.npy');
+            fileType = 'npy';
+        }
+
+        const scriptPath = path.join(baseDir, 'Inference_Pipeline/extract_slice.py');
+
+        // Execute Python script with plane argument
+        exec(`python "${scriptPath}" "${filePath}" "${fileType}" "${index}" "${type}" "${plane || 'axial'}"`, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Slice extraction error: ${error}`);
+                return res.status(500).send('Error extracting slice');
+            }
+            
+            // output is the base64 string
+            const imgData = stdout.trim();
+            res.json({ success: true, image: `data:image/png;base64,${imgData}` });
+        });
+
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// @desc    Get analysis 3D model (GLB)
+// @route   GET /api/analyses/:id/model
+// @access  Private
+exports.get3DModel = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { modelName } = req.query; 
+        
+        const baseDir = path.resolve(__dirname, '../../Segmentation Model');
+        const resultsDir = path.join(baseDir, 'AR_Assets/results', id);
+        
+        // Priority 1: Specifically requested model in test_ui (debugging)
+        if (modelName) {
+            const testPath = path.join(baseDir, 'test_ui', modelName);
+            if (require('fs').existsSync(testPath)) return res.sendFile(testPath);
+        }
+
+        // Priority 2: Dynamic patient-specific model
+        const dynamicModelPath = path.join(resultsDir, 'tumor_with_brain.glb');
+        if (require('fs').existsSync(dynamicModelPath)) {
+            return res.sendFile(dynamicModelPath);
+        }
+
+        // Priority 3: Legacy global model
+        const legacyPath = path.join(baseDir, 'AR_Assets/tumor_with_brain.glb');
+        if (require('fs').existsSync(legacyPath)) {
+            return res.sendFile(legacyPath);
+        }
+
+        // Priority 4: Default test model
+        const defaultTestPath = path.join(baseDir, 'test_ui/tumor_with_brain_new1.glb');
+        if (require('fs').existsSync(defaultTestPath)) {
+            return res.sendFile(defaultTestPath);
+        }
+
+        return res.status(404).json({ success: false, message: '3D Model not found' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 

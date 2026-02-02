@@ -14,7 +14,7 @@ MAX_ALLOWED_RATIO = 0.35
 # =====================================================
 # LOAD TUMOR
 # =====================================================
-tumor_raw = trimesh.load("../AR_Assets/tumor.glb")
+tumor_raw = trimesh.load("tumor.glb")
 
 if isinstance(tumor_raw, trimesh.Scene):
     tumor = trimesh.util.concatenate(list(tumor_raw.geometry.values()))
@@ -96,5 +96,5 @@ final_scene.apply_transform(rotation)
 # =====================================================
 # EXPORT
 # =====================================================
-final_scene.export("../AR_Assets/tumor_with_brain.glb")
-print("✅ tumor_with_brain.glb exported")
+final_scene.export("tumor_with_brain.glb")
+print("[SUCCESS] tumor_with_brain.glb exported")

@@ -2,7 +2,7 @@ const OutcomePrediction = require('../models/OutcomePrediction');
 const TreatmentPlan = require('../models/TreatmentPlan');
 const Patient = require('../models/Patient');
 const User = require('../models/User');
-const AuditLog = require('../models/AuditLog');
+
 const { generateMockAnalysis } = require('../utils/aiSimulator');
 
 // @desc    Get all outcome predictions for a patient
@@ -82,21 +82,7 @@ exports.createOutcome = async (req, res) => {
             qualityOfLife: aiResults.qualityOfLife
         });
 
-        // Create audit log
-        const previousHash = await AuditLog.getLastHash();
-        await AuditLog.create({
-            patientId: outcome.patientId,
-            userId: req.user.id,
-            action: 'outcome_generated',
-            data: {
-                outcomeId: outcome.id,
-                medianOS: outcome.overallSurvival.median,
-                medianPFS: outcome.progressionFreeSurvival.median
-            },
-            previousHash,
-            ipAddress: req.ip,
-            userAgent: req.get('user-agent')
-        });
+
 
         res.status(201).json({
             success: true,

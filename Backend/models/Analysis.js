@@ -17,13 +17,32 @@ const Analysis = sequelize.define('Analysis', {
         type: DataTypes.ENUM('pending', 'processing', 'completed', 'failed'),
         defaultValue: 'pending'
     },
-    data: {
+    // Dedicated MRI Extracted Columns
+    tumorVolume: {
+        type: DataTypes.FLOAT, // cm3
+        allowNull: true
+    },
+    edemaVolume: {
+        type: DataTypes.FLOAT, // cm3
+        allowNull: true
+    },
+    tumorLocation: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    // Detailed Radiomics
+    intensityStats: {
         type: DataTypes.JSONB,
         defaultValue: {}
     },
-    uploadedFiles: {
+    textureFeatures: {
         type: DataTypes.JSONB,
-        defaultValue: []
+        defaultValue: {}
+    },
+    // Full raw data for future-proofing
+    data: {
+        type: DataTypes.JSONB,
+        defaultValue: {}
     },
     processingTime: {
         type: DataTypes.INTEGER
@@ -34,9 +53,6 @@ const Analysis = sequelize.define('Analysis', {
             min: 0,
             max: 100
         }
-    },
-    notes: {
-        type: DataTypes.TEXT
     }
 });
 

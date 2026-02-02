@@ -219,7 +219,29 @@
 .terminal-header h5 { font-family: var(--font-heading) !important; font-weight: 700 !important; color: #fff; letter-spacing: 1px; }
 .req-badge { font-family: 'JetBrains Mono', monospace; color: var(--tech-teal); font-size: 0.8rem; }
 
-/* --- ID CARD (REMOVED) --- */
+/* --- ID CARD --- */
+.id-card {
+    background: linear-gradient(135deg, rgba(22,32,50,0.95), rgba(11,18,33,0.98));
+    border: 1px solid var(--tech-border);
+    border-radius: 16px;
+    padding: 3rem;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    min-width: 500px;
+    max-width: 800px;
+    margin: 0;
+}
+.holo-bar { position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: var(--tech-teal); box-shadow: 0 2px 10px var(--tech-teal); }
+.id-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+.id-avatar { width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; color: var(--tech-cyan); }
+.id-label { font-family: var(--font-heading); color: var(--tech-teal); letter-spacing: 1px; font-size: 0.75rem; font-weight: 600; }
+.id-name { font-family: var(--font-body); color: #fff; margin: 0; font-size: 1.25rem; line-height: 1.2; text-transform: uppercase; }
+.id-details { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.id-field span { font-family: var(--font-heading); color: var(--tech-muted); font-size: 0.7rem; display: block; letter-spacing: 0.5px; }
+.id-field p { font-family: var(--font-heading); color: #fff; margin: 0; font-size: 1rem; }
+
+/* --- REMOVED: CHEVRON INTERLOCK --- */
 /* --- FORM COMPONENTS --- */
 .form-inputs-col { display: flex; flex-direction: column; gap: 1.5rem; }
 .gender-selection-col { display: flex; flex-direction: column; gap: 1rem; }
@@ -233,8 +255,9 @@
 .tech-input .MuiSvgIcon-root { color: var(--tech-muted); }
 .tech-input .Mui-focused .MuiSvgIcon-root { color: var(--tech-cyan); }
 .tech-input .MuiInputBase-input { width: 100%; }
-.tech-input.fixed-width .MuiInputBase-input { width: 375px !important; }
-
+.tech-input.fixed-width .MuiInputBase-input { 
+    width: 375px !important; 
+}
 /* --- GENDER TILES --- */
 .field-label { color: var(--tech-muted) !important; font-family: var(--font-body) !important; margin-bottom: 1rem !important; display: block; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
 .gender-tile-wrapper { width: 100%; }
@@ -276,7 +299,7 @@
     transition: all 0.3s;
     position: relative;
     overflow: hidden;
-    padding: 4rem;
+    padding: 3rem;
     box-sizing: border-box;
 }
 .upload-zone:hover { border-color: var(--tech-cyan); background: rgba(0, 240, 255, 0.05); }
@@ -504,6 +527,40 @@
 }
 .tech-btn-launch:hover { background: #fff !important; box-shadow: 0 0 40px rgba(0, 240, 255, 0.5) !important; }
 .tech-btn-launch:disabled { background: rgba(255,255,255,0.05) !important; color: rgba(255,255,255,0.2) !important; box-shadow: none !important; }
+
+/* --- CANCER TYPE SELECTOR --- */
+.cancer-type-selector {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.tech-btn-choice {
+    font-family: var(--font-heading) !important;
+    font-weight: 700 !important;
+    letter-spacing: 1px !important;
+    border-radius: 4px !important;
+    transition: all 0.3s !important;
+    text-transform: uppercase !important;
+}
+
+.tech-btn-choice.active {
+    background: var(--tech-cyan) !important;
+    color: #0B1221 !important;
+    box-shadow: 0 0 15px var(--tech-cyan) !important;
+    border-color: var(--tech-cyan) !important;
+}
+
+.tech-btn-choice:not(.active) {
+    border-color: rgba(255,255,255,0.1) !important;
+    color: var(--tech-muted) !important;
+}
+
+.tech-btn-choice:not(.active):hover {
+    border-color: var(--tech-teal) !important;
+    color: #fff !important;
+    background: rgba(5, 151, 137, 0.1) !important;
+}
 
 @media (max-width: 900px) {
     .intake-container { padding: 1rem; }

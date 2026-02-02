@@ -46,9 +46,33 @@ const Patient = sequelize.define('Patient', {
         type: DataTypes.DATE,
         allowNull: false
     },
+    status: {
+        type: DataTypes.ENUM('Active', 'Pending', 'Completed'),
+        defaultValue: 'Pending'
+    },
+    cancerType: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    genomicProfile: {
+        type: DataTypes.JSONB,
+        defaultValue: {}
+    },
+    kps: {
+        type: DataTypes.INTEGER,
+        validate: { min: 0, max: 100 }
+    },
     performanceStatus: {
         type: DataTypes.ENUM('0', '1', '2', '3', '4'),
         defaultValue: '1'
+    },
+    symptoms: {
+        type: DataTypes.ARRAY(DataTypes.STRING),
+        defaultValue: []
+    },
+    comorbidities: {
+        type: DataTypes.ARRAY(DataTypes.STRING),
+        defaultValue: []
     },
     medicalHistory: {
         type: DataTypes.TEXT

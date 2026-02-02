@@ -4,20 +4,35 @@
 const generateMockAnalysis = (type, inputData = {}) => {
     const generators = {
         mri: () => ({
-            tumorVolume: (Math.random() * 50 + 10).toFixed(2),
+            volumetricAnalysis: {
+                tumorVolume: (Math.random() * 50 + 10).toFixed(2),
+                edemaVolume: (Math.random() * 30 + 5).toFixed(2),
+                necrosisVolume: (Math.random() * 5 + 1).toFixed(2),
+                enhancingVolume: (Math.random() * 40 + 5).toFixed(2)
+            },
             tumorLocation: ['Frontal Lobe', 'Temporal Lobe', 'Parietal Lobe', 'Occipital Lobe'][Math.floor(Math.random() * 4)],
-            edemaVolume: (Math.random() * 30 + 5).toFixed(2),
             segmentationConfidence: (Math.random() * 20 + 80).toFixed(1),
-            radiomics: {
+            shapeFeatures: {
                 sphericity: (Math.random() * 0.3 + 0.7).toFixed(3),
                 compactness: (Math.random() * 0.4 + 0.6).toFixed(3),
-                surfaceArea: (Math.random() * 1000 + 500).toFixed(2),
-                texture: {
-                    contrast: (Math.random() * 100).toFixed(2),
-                    correlation: (Math.random()).toFixed(3),
-                    energy: (Math.random()).toFixed(3),
-                    homogeneity: (Math.random()).toFixed(3)
-                }
+                elongation: (Math.random() * 0.5 + 0.5).toFixed(3),
+                flatness: (Math.random() * 0.5 + 0.5).toFixed(3),
+                spiculation: (Math.random() * 0.5).toFixed(3)
+            },
+            textureFeatures: {
+                contrast: (Math.random() * 100).toFixed(2),
+                correlation: (Math.random()).toFixed(3),
+                energy: (Math.random()).toFixed(3),
+                homogeneity: (Math.random()).toFixed(3)
+            },
+            intensityStats: {
+                min: 10,
+                max: 255,
+                mean: (Math.random() * 100 + 50).toFixed(1),
+                median: (Math.random() * 100 + 50).toFixed(1),
+                stdDev: (Math.random() * 20 + 10).toFixed(1),
+                skewness: (Math.random() * 2 - 1).toFixed(2),
+                kurtosis: (Math.random() * 5).toFixed(2)
             },
             tumorGrade: ['Grade II', 'Grade III', 'Grade IV'][Math.floor(Math.random() * 3)],
             enhancementPattern: ['Ring-enhancing', 'Heterogeneous', 'Homogeneous', 'Non-enhancing'][Math.floor(Math.random() * 4)]

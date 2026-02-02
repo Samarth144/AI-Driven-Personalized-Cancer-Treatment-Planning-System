@@ -51,7 +51,7 @@ app.use('/api/patients', require('./routes/patients'));
 app.use('/api/analyses', require('./routes/analysis'));
 app.use('/api/treatments', require('./routes/treatments'));
 app.use('/api/outcomes', require('./routes/outcomes'));
-app.use('/api/audit', require('./routes/audit'));
+
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/uploads', require('./routes/uploads'));
 

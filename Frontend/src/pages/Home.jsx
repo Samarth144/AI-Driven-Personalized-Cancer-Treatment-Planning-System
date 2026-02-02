@@ -81,7 +81,7 @@ function Home() {
           <div className="hero-title-box">
             {/* The Glow Effect Heading */}
             <h2 className="hero-title-text">
-              RESONANCE: AI-Powered Oncology Command Center
+              AI-Driven Personalized Cancer Treatment Planning System
             </h2>
 
             {/* The Technical Subheading */}
