@@ -24,18 +24,25 @@ ChartJS.register(
   Legend
 );
 
+import axios from 'axios';
+import { useLocation } from 'react-router-dom';
+
 function GenomicAnalysis() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(false);
   const [genomicData, setGenomicData] = useState(null);
+  const [patientId, setPatientId] = useState(null);
+  const [patientData, setPatientData] = useState(null);
 
   // Helper to generate mock data exactly like the original app.js logic
-  const generateMockGenomicData = () => {
+  const generateMockGenomicData = (type) => {
+    const isBrain = type === 'Brain';
     return {
-      idh1: Math.random() > 0.5 ? 'Mutant' : 'Wild-type',
-      mgmt: Math.random() > 0.5 ? 'Methylated' : 'Unmethylated',
-      atrx: Math.random() > 0.5 ? 'Mutant' : 'Wild-type',
-      codeletion1p19q: Math.random() > 0.7 ? 'Present' : 'Absent',
+      idh1: isBrain ? (Math.random() > 0.5 ? 'Mutant' : 'Wild-type') : 'N/A',
+      mgmt: isBrain ? (Math.random() > 0.5 ? 'Methylated' : 'Unmethylated') : 'N/A',
+      atrx: isBrain ? (Math.random() > 0.5 ? 'Mutant' : 'Wild-type') : 'N/A',
+      codeletion1p19q: isBrain ? (Math.random() > 0.7 ? 'Present' : 'Absent') : 'N/A',
       treatmentSensitivity: {
         temozolomide: parseFloat((Math.random() * 40 + 60).toFixed(1)),
         radiation: parseFloat((Math.random() * 30 + 70).toFixed(1)),
@@ -45,32 +52,66 @@ function GenomicAnalysis() {
     };
   };
 
-  const runGenomicAnalysis = async () => {
-    setLoading(true);
-    // Simulate processing delay (2.5s like original)
-    await new Promise(resolve => setTimeout(resolve, 2500));
-    
-    const newData = generateMockGenomicData();
-    setGenomicData(newData);
-    setLoading(false);
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const pid = params.get('patientId');
+    if (pid && pid !== 'null') {
+        setPatientId(pid);
+        fetchPatientData(pid);
+    }
+  }, [location.search]);
+
+  const fetchPatientData = async (pid) => {
+      try {
+          const token = localStorage.getItem('token');
+          const res = await axios.get(`http://localhost:8000/api/patients/${pid}`, {
+              headers: { Authorization: `Bearer ${token}` }
+          });
+          if (res.data.success) {
+              setPatientData(res.data.data);
+              const profile = res.data.data.genomicProfile || {};
+              setGenomicData({
+                  idh1: profile.idh1 || 'Unknown',
+                  mgmt: profile.mgmt || 'Unknown',
+                  atrx: profile.atrx || 'Unknown',
+                  codeletion1p19q: profile.codeletion1p19q || 'Unknown',
+                  treatmentSensitivity: {
+                    temozolomide: 0,
+                    radiation: 0,
+                    immunotherapy: 0,
+                    pcv: 0
+                  }
+              });
+          }
+      } catch (err) {
+          console.error("Failed to fetch patient data", err);
+      }
   };
 
-  // Initial load
-  useEffect(() => {
-    const initialData = {
-        idh1: 'Wild-type',
-        mgmt: 'Methylated',
-        atrx: 'Wild-type',
-        codeletion1p19q: 'Absent',
-        treatmentSensitivity: {
-          temozolomide: 91.9,
-          radiation: 85.5,
-          immunotherapy: 45.2,
-          pcv: 76.8
+  const runGenomicAnalysis = async () => {
+    setLoading(true);
+    try {
+        const token = localStorage.getItem('token');
+        
+        // 1. Create Analysis Record
+        const createRes = await axios.post('http://localhost:8000/api/analyses', {
+            patientId: patientId,
+            analysisType: 'genomic',
+            status: 'completed', // For now, mock completion
+            data: generateMockGenomicData(patientData?.cancerType)
+        }, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (createRes.data.success) {
+            setGenomicData(createRes.data.data.data);
         }
-      };
-      setGenomicData(initialData);
-  }, []);
+    } catch (err) {
+        console.error("Analysis failed", err);
+    } finally {
+        setLoading(false);
+    }
+  };
 
   // Chart data calculations
   const sensitivityChartData = useMemo(() => {

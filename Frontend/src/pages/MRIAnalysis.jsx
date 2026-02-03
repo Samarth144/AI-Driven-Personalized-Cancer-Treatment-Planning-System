@@ -48,12 +48,12 @@ const Viewport = ({ title, color, children }) => (
   </div>
 );
 
-const MRIViewer = ({ analysisId, sequence, setSequence, slice, setSlice, viewPlane, setViewPlane }) => {
+const MRIViewer = ({ analysisId, sequence, setSequence, slice, setSlice, viewPlane, setViewPlane, loading }) => {
   const [images, setImages] = useState({ source: null, mask: null, heatmap: null });
 
   useEffect(() => {
       const fetchImages = async () => {
-          if (!analysisId) return;
+          if (!analysisId || loading) return;
           try {
               const token = localStorage.getItem('token');
               const headers = { Authorization: `Bearer ${token}` };
@@ -448,6 +448,7 @@ const MRIAnalysis = () => {
                 analysisId={analysisId}
                 viewPlane={viewPlane}
                 setViewPlane={setViewPlane}
+                loading={loading}
                 sequence={sequence} setSequence={setSequence} 
                 slice={slice} setSlice={setSlice} 
              />
@@ -531,7 +532,10 @@ const MRIAnalysis = () => {
            </Button>
            <Button 
              variant="outlined" 
-             onClick={() => navigate('/genomic-analysis')}
+             onClick={() => {
+                 if (patientId) navigate(`/genomic-analysis?patientId=${patientId}`);
+                 else alert("No patient loaded.");
+             }}
              endIcon={<ArrowForwardIcon />}
              className="nav-btn-outlined"
            >

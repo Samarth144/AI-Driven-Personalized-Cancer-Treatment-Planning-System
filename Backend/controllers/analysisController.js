@@ -153,7 +153,7 @@ exports.processAnalysis = async (req, res) => {
                  
                  // 3. Move files to unique folder
                  const fs = require('fs');
-                 const filesToMove = ['tumor_mask.npy', 'tumor_probs.npy', 'tumor.glb', 'tumor_with_brain.glb'];
+                 const filesToMove = ['tumor_mask.npy', 'tumor_probs.npy', 'tumor.glb', 'edema.glb', 'brain.glb', 'tumor_with_brain.glb'];
                  filesToMove.forEach(file => {
                      const oldPath = path.join(scriptDir, file); // Files are now generated here
                      const newPath = path.join(resultsDir, file);
@@ -259,6 +259,13 @@ exports.getSlice = async (req, res) => {
 
         const scriptPath = path.join(baseDir, 'Inference_Pipeline/extract_slice.py');
 
+        // Check if file exists before running python
+        const fs = require('fs');
+        if (!fs.existsSync(filePath)) {
+            console.log(`Slice file not ready yet: ${filePath}`);
+            return res.status(404).json({ success: false, message: 'Slice data not ready' });
+        }
+
         // Execute Python script with plane argument
         exec(`python "${scriptPath}" "${filePath}" "${fileType}" "${index}" "${type}" "${plane || 'axial'}"`, (error, stdout, stderr) => {
             if (error) {
@@ -282,33 +289,30 @@ exports.getSlice = async (req, res) => {
 exports.get3DModel = async (req, res) => {
     try {
         const { id } = req.params;
-        const { modelName } = req.query; 
+        const { modelName } = req.query; // This can now be 'brain.glb', 'tumor.glb', etc.
         
         const baseDir = path.resolve(__dirname, '../../Segmentation Model');
         const resultsDir = path.join(baseDir, 'AR_Assets/results', id);
         
-        // Priority 1: Specifically requested model in test_ui (debugging)
+        // 1. If a specific model name is passed (from the new frontend logic)
         if (modelName) {
+            // Check in results folder first
+            const dynamicPath = path.join(resultsDir, modelName);
+            if (require('fs').existsSync(dynamicPath)) return res.sendFile(dynamicPath);
+            
+            // Check in test_ui fallback
             const testPath = path.join(baseDir, 'test_ui', modelName);
             if (require('fs').existsSync(testPath)) return res.sendFile(testPath);
+
+            // Check in AR_Assets (global templates)
+            const assetsPath = path.join(baseDir, 'AR_Assets', modelName);
+            if (require('fs').existsSync(assetsPath)) return res.sendFile(assetsPath);
         }
 
-        // Priority 2: Dynamic patient-specific model
-        const dynamicModelPath = path.join(resultsDir, 'tumor_with_brain.glb');
-        if (require('fs').existsSync(dynamicModelPath)) {
-            return res.sendFile(dynamicModelPath);
-        }
-
-        // Priority 3: Legacy global model
-        const legacyPath = path.join(baseDir, 'AR_Assets/tumor_with_brain.glb');
-        if (require('fs').existsSync(legacyPath)) {
-            return res.sendFile(legacyPath);
-        }
-
-        // Priority 4: Default test model
-        const defaultTestPath = path.join(baseDir, 'test_ui/tumor_with_brain_new1.glb');
-        if (require('fs').existsSync(defaultTestPath)) {
-            return res.sendFile(defaultTestPath);
+        // 2. Default fallback if no modelName specified
+        const defaultModelPath = path.join(resultsDir, 'tumor_with_brain.glb');
+        if (require('fs').existsSync(defaultModelPath)) {
+            return res.sendFile(defaultModelPath);
         }
 
         return res.status(404).json({ success: false, message: '3D Model not found' });
