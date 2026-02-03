@@ -157,3 +157,46 @@ Evidence references:
 [S2] Peer-reviewed oncology trials
 """
     return text, evidence
+
+def predict_outcomes(patient, cancer, query, queries):
+    # RAG evidence
+    evidence = hybrid_retrieve(cancer, query, queries)
+    evidence_text = "\n".join([f"[{i+1}] {e['text']}" for i, e in enumerate(evidence)])
+
+    prompt = f"""
+You are an oncology clinical predictor.
+Based on the following patient data and supporting evidence, predict the outcomes.
+
+PATIENT:
+{patient}
+
+SUPPORTING EVIDENCE:
+{evidence_text}
+
+Write sections exactly as:
+
+Side Effects:
+- Fatigue: 0%
+- Nausea: 0%
+- Cognitive Impairment: 0%
+- Hematologic Toxicity: 0%
+
+Overall Survival:
+- Median: 0 months
+- Range: 0-0 months
+
+Progression-Free Survival:
+- Median: 0 months
+- Range: 0-0 months
+
+Quality of Life: 0
+"""
+
+    tokenizer, model = load_model()
+
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024)
+    outputs = model.generate(**inputs, max_new_tokens=240, do_sample=False)
+
+    text = tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
+
+    return text, evidence

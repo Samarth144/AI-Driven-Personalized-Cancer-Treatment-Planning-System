@@ -177,6 +177,7 @@ function OutcomePrediction() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [outcomeData, setOutcomeData] = useState(null);
+  const [evidence, setEvidence] = useState([]);
   const [formData, setFormData] = useState({ 
     name: '', dob: '', gender: '', mrn: '', contact: '', diagnosisDate: '', pathologyReport: '', pathologyFile: null,
     cancerType: 'Brain',
@@ -193,6 +194,7 @@ function OutcomePrediction() {
     try {
       const response = await axios.post('http://localhost:5000/predict_side_effects', formData);
       setOutcomeData(response.data);
+      setEvidence(response.data.evidence || []);
     } catch (error) {
       console.error('Error generating predictions:', error);
     } finally {
@@ -494,20 +496,20 @@ function OutcomePrediction() {
               <p className="text-secondary mb-lg">Probability of experiencing treatment-related adverse events</p>
 
               <div className="side-effects-grid">
-                {loading ? (
-                    <div className="text-secondary">Calculating risks...</div>
-                ) : outcomeData && Object.entries(outcomeData.sideEffects).map(([name, risk]) => (
-                    <div key={name} className="side-effect-card">
-                        <div className="flex justify-between items-center mb-sm">
-                            <strong>{name}</strong>
-                            <span className="badge badge-warning">{risk}%</span>
-                        </div>
-                        <div className="risk-meter">
-                            <div className="risk-fill" style={{ width: `${risk}%` }}></div>
-                        </div>
+            {loading ? (
+                <div className="text-secondary">Calculating risks...</div>
+            ) : outcomeData && Object.entries(outcomeData.sideEffects).map(([name, risk]) => (
+                <div key={name} className="side-effect-card">
+                    <div className="flex justify-between items-center mb-sm">
+                        <strong>{name.replace(/([A-Z])/g, ' $1').trim()}</strong>
+                        <span className="badge badge-warning">{risk}%</span>
                     </div>
-                ))}
-              </div>
+                    <div className="risk-meter">
+                        <div className="risk-fill" style={{ width: `${risk}%` }}></div>
+                    </div>
+                </div>
+            ))}
+          </div>
             </div>
 
             {/* Risk Stratification */}
@@ -539,24 +541,42 @@ function OutcomePrediction() {
             </div>
 
             {/* Timeline Visualization */}
-            <div className="card-glass mb-xl">
-              <h3>Predicted Treatment Timeline & Outcomes</h3>
-              <p className="text-secondary mb-lg">Expected progression over time</p>
+        <div className="card-glass mb-xl">
+          <h3>Predicted Treatment Timeline & Outcomes</h3>
+          <p className="text-secondary mb-lg">Expected progression over time</p>
 
-              <div className="chart-wrapper-risk">
-                 <Line 
-                    data={timelineChartData} 
-                    options={{
-                        maintainAspectRatio: false,
-                        scales: {
-                            x: { ticks: { color: 'hsl(0, 0%, 75%)' }, grid: { color: 'hsla(0, 0%, 100%, 0.05)' } },
-                            y: { ticks: { color: 'hsl(0, 0%, 75%)' }, grid: { color: 'hsla(0, 0%, 100%, 0.05)' } }
-                        },
-                        plugins: { legend: { labels: { color: 'hsl(0, 0%, 75%)' } } }
-                    }}
-                 />
-              </div>
+          <div className="chart-wrapper-risk">
+             <Line 
+                data={timelineChartData} 
+                options={{
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color: 'hsl(0, 0%, 75%)' }, grid: { color: 'hsla(0, 0%, 100%, 0.05)' } },
+                        y: { ticks: { color: 'hsl(0, 0%, 75%)' }, grid: { color: 'hsla(0, 0%, 100%, 0.05)' } }
+                    },
+                    plugins: { legend: { labels: { color: 'hsl(0, 0%, 75%)' } } }
+                }}
+             />
+          </div>
+        </div>
+
+        {/* Evidence Section */}
+        {evidence.length > 0 && (
+          <div className="card-glass mb-xl">
+            <h3>Evidence from Literature</h3>
+            <p className="text-secondary mb-lg">Sources used for prediction</p>
+            <div className="evidence-grid">
+              {evidence.map((item, index) => (
+                <div key={index} className="evidence-card">
+                  <p className="evidence-text">{item.text}</p>
+                  <p className="evidence-source">{item.source} - Page {item.page}</p>
+                </div>
+              ))}
             </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
           </>
         )}
 
