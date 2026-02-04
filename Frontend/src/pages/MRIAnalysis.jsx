@@ -50,17 +50,27 @@ const Viewport = ({ title, color, children }) => (
 
 const MRIViewer = ({ analysisId, sequence, setSequence, slice, setSlice, viewPlane, setViewPlane, loading }) => {
   const [images, setImages] = useState({ source: null, mask: null, heatmap: null });
+  const [imageLoading, setImageLoading] = useState(false); // Local loading state for images
 
   useEffect(() => {
       const fetchImages = async () => {
           if (!analysisId || loading) return;
+          setImageLoading(true); // Start loading
           try {
               const token = localStorage.getItem('token');
               const headers = { Authorization: `Bearer ${token}` };
               
+              // Determine modality for source image based on sequence selection
+              // Map UI sequence names to backend query params
+              let modalityParam = '';
+              if (sequence === 'T1') modalityParam = '&modality=t1';
+              else if (sequence === 'T1ce') modalityParam = '&modality=t1ce';
+              else if (sequence === 'T2') modalityParam = '&modality=t2';
+              else if (sequence === 'FLAIR') modalityParam = '&modality=flair';
+
               // Parallel fetch for speed
               const [sourceRes, maskRes, heatmapRes] = await Promise.all([
-                  axios.get(`http://localhost:8000/api/analyses/${analysisId}/slice/${slice}?type=source&plane=${viewPlane}`, { headers }),
+                  axios.get(`http://localhost:8000/api/analyses/${analysisId}/slice/${slice}?type=source&plane=${viewPlane}${modalityParam}`, { headers }),
                   axios.get(`http://localhost:8000/api/analyses/${analysisId}/slice/${slice}?type=mask&plane=${viewPlane}`, { headers }),
                   axios.get(`http://localhost:8000/api/analyses/${analysisId}/slice/${slice}?type=heatmap&plane=${viewPlane}`, { headers })
               ]);
@@ -72,6 +82,8 @@ const MRIViewer = ({ analysisId, sequence, setSequence, slice, setSlice, viewPla
               });
           } catch (err) {
               console.error("Error fetching slices:", err);
+          } finally {
+              setImageLoading(false); // Stop loading
           }
       };
 
@@ -85,6 +97,24 @@ const MRIViewer = ({ analysisId, sequence, setSequence, slice, setSlice, viewPla
 
   const maxSlices = viewPlane === 'axial' ? 155 : 240;
 
+  // Loading Overlay Component
+  const LoadingOverlay = () => (
+    <div style={{
+      position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(11, 18, 33, 0.6)', backdropFilter: 'blur(2px)', zIndex: 10
+    }}>
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        style={{
+          width: 40, height: 40,
+          border: `3px solid ${colors.cyan}`, borderTopColor: 'transparent',
+          borderRadius: '50%'
+        }}
+      />
+    </div>
+  );
+
   return (
     <Box sx={{ height: '60vh', minHeight: '500px', display: 'flex', flexDirection: 'column', gap: 2 }}>
       
@@ -93,15 +123,18 @@ const MRIViewer = ({ analysisId, sequence, setSequence, slice, setSlice, viewPla
         
         {/* 1. SOURCE VIEW */}
         <Viewport title={`SOURCE: ${sequence} (${viewPlane.toUpperCase()})`} color={colors.text}>
-           {images.source ? (
-               <img src={images.source} alt="MRI Slice" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-           ) : (
-               <Box sx={{ 
-                 position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                 width: '60%', height: '60%', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.1)',
-                 background: 'radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%)'
-               }} />
-           )}
+           <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+             {imageLoading && <LoadingOverlay />}
+             {images.source ? (
+                 <img src={images.source} alt="MRI Slice" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+             ) : (
+                 <Box sx={{ 
+                   position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                   width: '60%', height: '60%', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.1)',
+                   background: 'radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%)'
+                 }} />
+             )}
+           </div>
            <Typography variant="caption" className="viewport-label" style={{ color: colors.muted }}>
              RAW_DICOM_DATA
            </Typography>
@@ -109,23 +142,26 @@ const MRIViewer = ({ analysisId, sequence, setSequence, slice, setSlice, viewPla
 
         {/* 2. SEGMENTATION VIEW */}
         <Viewport title="AI SEGMENTATION" color={colors.cyan}>
-           {images.mask ? (
-               <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-                   {/* Background Source for Context */}
-                   <img src={images.source} style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'contain', opacity: 0.5 }} />
-                   {/* Mask Overlay */}
-                   <img src={images.mask} style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'contain' }} />
-               </div>
-           ) : (
-               <motion.div 
-                 animate={{ scale: [1, 1.02, 1], opacity: [0.4, 0.6, 0.4] }}
-                 transition={{ duration: 4, repeat: Infinity }}
-                 style={{ 
-                   position: 'absolute', top: '40%', left: '40%', width: '30%', height: '30%', 
-                   borderRadius: '40% 60% 70% 30% / 40% 50% 60% 70%', background: colors.cyan, filter: 'blur(20px)' 
-                 }} 
-               />
-           )}
+           <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+             {imageLoading && <LoadingOverlay />}
+             {images.mask ? (
+                 <>
+                     {/* Background Source for Context */}
+                     <img src={images.source} style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'contain', opacity: 0.5 }} />
+                     {/* Mask Overlay */}
+                     <img src={images.mask} style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'contain' }} />
+                 </>
+             ) : (
+                 <motion.div 
+                   animate={{ scale: [1, 1.02, 1], opacity: [0.4, 0.6, 0.4] }}
+                   transition={{ duration: 4, repeat: Infinity }}
+                   style={{ 
+                     position: 'absolute', top: '40%', left: '40%', width: '30%', height: '30%', 
+                     borderRadius: '40% 60% 70% 30% / 40% 50% 60% 70%', background: colors.cyan, filter: 'blur(20px)' 
+                   }} 
+                 />
+             )}
+           </div>
            <Typography variant="caption" className="viewport-label" style={{ color: colors.cyan }}>
              MASK_GENERATED
            </Typography>
@@ -133,25 +169,28 @@ const MRIViewer = ({ analysisId, sequence, setSequence, slice, setSlice, viewPla
 
         {/* 3. HEATMAP VIEW */}
         <Viewport title="GRAD-CAM HEATMAP" color={colors.amber}>
-           {images.heatmap ? (
-               <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-                   {/* Background Source */}
-                   <img src={images.source} style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'contain', opacity: 0.3 }} />
-                   {/* Heatmap Overlay */}
-                   <img src={images.heatmap} style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'contain' }} />
-               </div>
-           ) : (
-               <>
-               <Box style={{ 
-                 position: 'absolute', inset: 0, 
-                 background: 'radial-gradient(circle at 45% 45%, rgba(245, 158, 11, 0.4) 0%, transparent 40%)' 
-               }} />
-               <Box style={{ 
-                 position: 'absolute', inset: 0, 
-                 background: 'radial-gradient(circle at 55% 55%, rgba(0, 240, 255, 0.2) 0%, transparent 30%)' 
-               }} />
-               </>
-           )}
+           <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+             {imageLoading && <LoadingOverlay />}
+             {images.heatmap ? (
+                 <>
+                     {/* Background Source */}
+                     <img src={images.source} style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'contain', opacity: 0.3 }} />
+                     {/* Heatmap Overlay */}
+                     <img src={images.heatmap} style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'contain' }} />
+                 </>
+             ) : (
+                 <>
+                 <Box style={{ 
+                   position: 'absolute', inset: 0, 
+                   background: 'radial-gradient(circle at 45% 45%, rgba(245, 158, 11, 0.4) 0%, transparent 40%)' 
+                 }} />
+                 <Box style={{ 
+                   position: 'absolute', inset: 0, 
+                   background: 'radial-gradient(circle at 55% 55%, rgba(0, 240, 255, 0.2) 0%, transparent 30%)' 
+                 }} />
+                 </>
+             )}
+           </div>
            <Typography variant="caption" className="viewport-label" style={{ color: colors.amber }}>
              ACTIVATION_MAP
            </Typography>
@@ -269,6 +308,48 @@ const MRIAnalysis = () => {
   });
 
   const [insight, setInsight] = useState("AI analysis pending. Run segmentation to generate insights.");
+  
+  // Custom Toast State
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+  // Toast Component
+  const NotificationToast = () => (
+    <AnimatePresence>
+      {toast.show && (
+        <motion.div
+          initial={{ opacity: 0, y: -50, x: '-50%' }}
+          animate={{ opacity: 1, y: 0, x: '-50%' }}
+          exit={{ opacity: 0, y: -20, x: '-50%' }}
+          transition={{ type: "spring", stiffness: 120, damping: 20 }}
+          style={{
+            position: 'fixed', top: '100px', left: '50%', zIndex: 9999,
+            background: 'rgba(5, 151, 137, 0.95)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid #00F0FF',
+            padding: '16px 32px',
+            borderRadius: '12px',
+            display: 'flex', alignItems: 'center', gap: '12px',
+            boxShadow: '0 0 30px rgba(0, 240, 255, 0.3)'
+          }}
+        >
+          <AutoGraphIcon sx={{ color: '#fff', fontSize: 28 }} />
+          <div>
+            <Typography variant="subtitle1" sx={{ color: '#fff', fontWeight: 700, fontFamily: '"Rajdhani"', lineHeight: 1.2 }}>
+              SYSTEM NOTIFICATION
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.9)', fontFamily: '"Space Grotesk"' }}>
+              {toast.message}
+            </Typography>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 5000);
+  };
 
   // Parse patientId from URL and fetch data
   useEffect(() => {
@@ -401,12 +482,12 @@ const MRIAnalysis = () => {
         if (processRes.data.success) {
              console.log("Segmentation result:", processRes.data);
              updateMetricsFromData(processRes.data.data.data);
-             alert("Segmentation Completed Successfully!");
+             showToast("SEGMENTATION MODEL GENERATED SUCCESSFULLY");
         }
 
     } catch (err) {
         console.error(err);
-        alert("Error running analysis: " + (err.response?.data?.message || err.message));
+        showToast("Error running analysis: " + (err.response?.data?.message || err.message), "error");
     } finally {
         setLoading(false);
     }
@@ -414,6 +495,7 @@ const MRIAnalysis = () => {
 
   return (
     <div className="mri-analysis-root">
+      <NotificationToast />
       <div className="fluid-container">
 
         {/* HEADER & MODEL SELECTOR */}
@@ -435,101 +517,133 @@ const MRIAnalysis = () => {
             startIcon={<PlayArrowIcon />}
             className="run-analysis-btn"
             onClick={handleRunAnalysis}
-            disabled={loading}
+            disabled={loading || model !== 'Brain'}
           >
             {loading ? 'PROCESSING...' : 'RUN NEW ANALYSIS'}
           </Button>
         </div>
 
-        {/* MAIN GRID */}
-        <Grid container spacing={4} sx={{ width: '95vw', minWidth: 0 }}>
-          <Grid item xs={12} lg={7}>
-             <MRIViewer 
-                analysisId={analysisId}
-                viewPlane={viewPlane}
-                setViewPlane={setViewPlane}
-                loading={loading}
-                sequence={sequence} setSequence={setSequence} 
-                slice={slice} setSlice={setSlice} 
-             />
-          </Grid>
+        {model !== 'Brain' ? (
+          <Box sx={{ 
+            height: '70vh', display: 'flex', flexDirection: 'column', 
+            alignItems: 'center', justifyContent: 'center', textAlign: 'center',
+            background: 'rgba(255,255,255,0.02)', borderRadius: '30px', border: '1px dashed rgba(255,255,255,0.1)',
+            m: 4
+          }}>
+            <AutoGraphIcon sx={{ fontSize: 100, color: '#64748B', mb: 4, opacity: 0.5 }} />
+            <Typography variant="h3" sx={{ fontFamily: '"Rajdhani"', color: '#fff', mb: 2 }}>
+              {model.toUpperCase()} ANALYSIS MODULE
+            </Typography>
+            <Typography variant="h5" sx={{ color: '#F59E0B', fontWeight: 700, mb: 1 }}>
+              INTELLIGENT SEGMENTATION: COMING SOON
+            </Typography>
+            <Typography variant="body1" sx={{ color: '#64748B', maxWidth: '600px', mb: 4 }}>
+              Advanced radiomics and 3D segmentation for {model} cancer is currently in development. 
+              However, you can still proceed with Genomic Analysis and AI-Driven Treatment Planning based on clinical records.
+            </Typography>
+            <Button 
+              variant="contained"
+              sx={{ 
+                background: 'linear-gradient(45deg, #059789, #00F0FF)',
+                color: '#fff', fontWeight: 700, px: 4, py: 1.5, borderRadius: '10px'
+              }}
+              onClick={() => {
+                if (patientId) navigate(`/genomic-analysis?patientId=${patientId}`);
+                else alert("No patient loaded.");
+              }}
+              endIcon={<ArrowForwardIcon />}
+            >
+              PROCEED TO CLINICAL ANALYSIS
+            </Button>
+          </Box>
+        ) : (
+          /* MAIN GRID */
+          <Grid container spacing={4} sx={{ width: '95vw', minWidth: 0 }}>
+            <Grid item xs={12} lg={7}>
+               <MRIViewer 
+                  analysisId={analysisId}
+                  viewPlane={viewPlane}
+                  setViewPlane={setViewPlane}
+                  loading={loading}
+                  sequence={sequence} setSequence={setSequence} 
+                  slice={slice} setSlice={setSlice} 
+               />
+            </Grid>
 
-          <Grid item xs={12} lg={5}>
-            <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="overline" sx={{ color: colors.teal, letterSpacing: '2px', fontWeight: 700, display: 'block', fontSize: '1.2rem', pt: '160px', pb: '10px' }}>
-                  QUANTITATIVE METRICS
-                </Typography>
-                <Grid container spacing={2} sx={{ mt: 1, gap: '1rem', justifyContent: 'center', width: '95vw' }}>
-                   {metrics.map((m) => (
-                     <Grid item xs={6} key={m.label}>
-                       <MetricCard {...m} />
-                     </Grid>
-                   ))}
-                </Grid>
-              </Box>
-
-              {/* Block 2: Shape Features (Dedicated) */}
-              <div className="radiomics-block">
-                <Typography variant="overline" className="radiomics-header" sx={{ fontSize: '1.2rem', pb: 4 }}>
-                  SHAPE CHARACTERISTICS (RADAR)
-                </Typography>
-                <div style={{ height: '300px' }}>
-                   <Radar data={shapeData} options={{ maintainAspectRatio: false, scales: { r: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { display: false } } } }} />
-                </div>
-              </div>
-
-              {/* Block 3: Texture & Intensity */}
-              <div className="radiomics-block">
-                <Typography variant="overline" className="radiomics-header" sx={{ fontSize: '1.2rem', pb: 4 }}>
-                  TEXTURE & INTENSITY ANALYTICS
-                </Typography>
-                
-                <Grid container spacing={3} sx={{ justifyContent: 'center', gap: '5rem' }}>
-                   <Grid item xs={12} md={6} sx={{ width: '40%' }}>
-                     <div style={{ height: '400px' }}>
-                        <Typography variant="caption" className="chart-label" sx={{ fontSize: '1rem' }}>TEXTURE (GLCM)</Typography>
-                        <Bar data={textureData} options={{ maintainAspectRatio: false, scales: { y: { grid: { color: 'rgba(255,255,255,0.1)' } }, x: { grid: { display: false } } } }} />
-                     </div>
-                   </Grid>
-                   <Grid item xs={12} md={6} sx={{ width: '40%' }}>
-                     <div style={{ height: '400px' }}>
-                        <Typography variant="caption" className="chart-label" sx={{ fontSize: '1rem' }}>INTENSITY HISTOGRAM</Typography>
-                        <Line data={intensityData} options={{ maintainAspectRatio: false, scales: { y: { grid: { color: 'rgba(255,255,255,0.1)' } }, x: { grid: { display: false } } } }} />
-                     </div>
-                   </Grid>
-                </Grid>
-
-                <div className="ai-insight-box">
-                  <AutoGraphIcon sx={{ color: colors.teal }} />
-                  <Typography variant="caption" className="ai-insight-text">
-                    {insight}
+            <Grid item xs={12} lg={5}>
+              <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <Box sx={{ textAlign: 'center' }}>
+                  <Typography variant="overline" sx={{ color: colors.teal, letterSpacing: '2px', fontWeight: 700, display: 'block', fontSize: '1.2rem', pt: '160px', pb: '10px' }}>
+                    QUANTITATIVE METRICS
                   </Typography>
-                </div>
-              </div>
-            </Box>
-          </Grid>
-        </Grid>
+                  <Grid container spacing={2} sx={{ mt: 1, gap: '1rem', justifyContent: 'center', width: '95vw' }}>
+                     {metrics.map((m) => (
+                       <Grid item xs={6} key={m.label}>
+                         <MetricCard {...m} />
+                       </Grid>
+                     ))}
+                  </Grid>
+                </Box>
 
-        {/* NAVIGATION FOOTER */}
+                {/* Block 2: Shape Features (Dedicated) */}
+                <div className="radiomics-block">
+                  <Typography variant="overline" className="radiomics-header" sx={{ fontSize: '1.2rem', pb: 4 }}>
+                    SHAPE CHARACTERISTICS (RADAR)
+                  </Typography>
+                  <div style={{ height: '300px' }}>
+                     <Radar data={shapeData} options={{ maintainAspectRatio: false, scales: { r: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { display: false } } } }} />
+                  </div>
+                </div>
+
+                {/* Block 3: Texture & Intensity */}
+                <div className="radiomics-block">
+                  <Typography variant="overline" className="radiomics-header" sx={{ fontSize: '1.2rem', pb: 4 }}>
+                    TEXTURE & INTENSITY ANALYTICS
+                  </Typography>
+                  
+                  <Grid container spacing={3} sx={{ justifyContent: 'center', gap: '5rem' }}>
+                     <Grid item xs={12} md={6} sx={{ width: '40%' }}>
+                       <div style={{ height: '400px' }}>
+                          <Typography variant="caption" className="chart-label" sx={{ fontSize: '1rem' }}>TEXTURE (GLCM)</Typography>
+                          <Bar data={textureData} options={{ maintainAspectRatio: false, scales: { y: { grid: { color: 'rgba(255,255,255,0.1)' } }, x: { grid: { display: false } } } }} />
+                       </div>
+                     </Grid>
+                     <Grid item xs={12} md={6} sx={{ width: '40%' }}>
+                       <div style={{ height: '400px' }}>
+                          <Typography variant="caption" className="chart-label" sx={{ fontSize: '1rem' }}>INTENSITY HISTOGRAM</Typography>
+                          <Line data={intensityData} options={{ maintainAspectRatio: false, scales: { y: { grid: { color: 'rgba(255,255,255,0.1)' } }, x: { grid: { display: false } } } }} />
+                       </div>
+                     </Grid>
+                  </Grid>
+
+                  <div className="ai-insight-box">
+                    <AutoGraphIcon sx={{ color: colors.teal }} />
+                    <Typography variant="caption" className="ai-insight-text">
+                      {insight}
+                    </Typography>
+                  </div>
+                </div>
+              </Box>
+            </Grid>
+          </Grid>
+        )}
+
+        {/* NAVIGATION FOOTER - ALWAYS VISIBLE */}
         <div className="nav-footer">
-           <Button 
-             onClick={() => {
-                 if (patientId) navigate(`/tumor-3d?patientId=${patientId}`);
-                 else alert("No patient loaded.");
-             }}
-             startIcon={<ViewInArIcon />} 
-             className="nav-btn-secondary"
-           >
-             VIEW IN 3D
-           </Button>
-           <Button 
-             onClick={() => navigate('/explainability')}
-             startIcon={<GradientIcon />} 
-             className="nav-btn-secondary"
-           >
-             VIEW EXPLAINABILITY
-           </Button>
+           {model === 'Brain' && (
+             <>
+               <Button 
+                 onClick={() => {
+                     if (patientId) navigate(`/tumor-3d?patientId=${patientId}`);
+                     else alert("No patient loaded.");
+                 }}
+                 startIcon={<ViewInArIcon />} 
+                 className="nav-btn-secondary"
+               >
+                 VIEW IN 3D
+               </Button>
+             </>
+           )}
            <Button 
              variant="outlined" 
              onClick={() => {
@@ -538,11 +652,11 @@ const MRIAnalysis = () => {
              }}
              endIcon={<ArrowForwardIcon />}
              className="nav-btn-outlined"
+             sx={{ ml: 'auto' }}
            >
              PROCEED TO GENOMICS
            </Button>
         </div>
-
       </div>
     </div>
   );

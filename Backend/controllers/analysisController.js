@@ -100,7 +100,9 @@ exports.createAnalysis = async (req, res) => {
 // @access  Private
 exports.processAnalysis = async (req, res) => {
     try {
-        let analysis = await Analysis.findByPk(req.params.id);
+        let analysis = await Analysis.findByPk(req.params.id, {
+            include: [{ model: Patient }]
+        });
 
         if (!analysis) {
             return res.status(404).json({
@@ -119,12 +121,45 @@ exports.processAnalysis = async (req, res) => {
         const scriptDir = path.join(baseDir, 'Inference_Pipeline');
         const scriptPath = path.join(scriptDir, 'infer_segmentation.py');
 
-        console.log(`Executing segmentation script: ${scriptPath}`);
+        // Resolve MRI paths
+        const resolvePath = (p) => p ? path.resolve(__dirname, '..', p) : null;
+        
+        // Check Analysis record first, then fallback to Patient record
+        const patientMri = analysis.Patient ? (analysis.Patient.mriPaths || {}) : {};
+        
+        const mriPaths = {
+            t1: resolvePath(analysis.t1Path || patientMri.t1),
+            t1ce: resolvePath(analysis.t1cePath || patientMri.t1ce),
+            t2: resolvePath(analysis.t2Path || patientMri.t2),
+            flair: resolvePath(analysis.flairPath || patientMri.flair)
+        };
 
-        const runScript = (name) => {
+        // Construct arguments
+        let scriptArgs = [];
+        if (mriPaths.t1) scriptArgs.push(`--t1 "${mriPaths.t1}"`);
+        if (mriPaths.t1ce) scriptArgs.push(`--t1ce "${mriPaths.t1ce}"`);
+        if (mriPaths.t2) scriptArgs.push(`--t2 "${mriPaths.t2}"`);
+        if (mriPaths.flair) scriptArgs.push(`--flair "${mriPaths.flair}"`);
+
+        // Validation: At least FLAIR is needed for the current model base, or just warn
+        if (!mriPaths.flair && scriptArgs.length === 0) {
+             // Fallback to test data if absolutely nothing is provided
+             const defaultFlair = path.join(baseDir, 'Test_Data/BraTS20_Training_001_flair.nii');
+             console.log("No MRI provided, using default test data.");
+             scriptArgs.push(`--flair "${defaultFlair}"`);
+        }
+
+        console.log(`Executing segmentation script: ${scriptPath}`);
+        console.log(`Args: ${scriptArgs.join(' ')}`);
+
+        const runScript = (name, args = []) => {
             return new Promise((resolve, reject) => {
                 const sPath = path.join(scriptDir, name);
-                exec(`python "${sPath}"`, { cwd: scriptDir }, (error, stdout, stderr) => {
+                // Join args array with spaces, but don't double quote if already quoted
+                const cmd = `python "${sPath}" ${args.join(' ')}`;
+                console.log(`Running command: ${cmd}`);
+                
+                exec(cmd, { cwd: scriptDir }, (error, stdout, stderr) => {
                     if (error) {
                         console.error(`Error in ${name}: ${error}`);
                         reject(error);
@@ -137,7 +172,8 @@ exports.processAnalysis = async (req, res) => {
         };
 
         try {
-             const stdout = await runScript('infer_segmentation.py');
+             // Pass separate arguments
+             const stdout = await runScript('infer_segmentation.py', scriptArgs);
              
              // 1. Create unique directory for this analysis
              const resultsDir = path.join(baseDir, 'AR_Assets/results', analysis.id);
@@ -239,15 +275,27 @@ exports.processAnalysis = async (req, res) => {
 exports.getSlice = async (req, res) => {
     try {
         const { id, index } = req.params;
-        const { type, plane } = req.query; 
+        const { type, plane, modality } = req.query; // Added modality query param
         
         const baseDir = path.resolve(__dirname, '../../Segmentation Model');
         const resultsDir = path.join(baseDir, 'AR_Assets/results', id);
         let filePath;
         let fileType;
 
+        // Fetch analysis to check for custom MRI path
+        const analysis = await Analysis.findByPk(id);
+
         if (type === 'source') {
-            filePath = path.join(baseDir, 'Test_Data/BraTS20_Training_001_flair.nii');
+            // Determine which modality to show
+            // Default to FLAIR if not specified, then T1CE, then T1, then T2
+            if (modality === 't1' && analysis.t1Path) filePath = path.resolve(__dirname, '..', analysis.t1Path);
+            else if (modality === 't1ce' && analysis.t1cePath) filePath = path.resolve(__dirname, '..', analysis.t1cePath);
+            else if (modality === 't2' && analysis.t2Path) filePath = path.resolve(__dirname, '..', analysis.t2Path);
+            else if (analysis.flairPath) filePath = path.resolve(__dirname, '..', analysis.flairPath);
+            else if (analysis.t1cePath) filePath = path.resolve(__dirname, '..', analysis.t1cePath); // Fallback hierarchy
+            else if (analysis.t1Path) filePath = path.resolve(__dirname, '..', analysis.t1Path);
+            else filePath = path.join(baseDir, 'Test_Data/BraTS20_Training_001_flair.nii'); // Ultimate fallback
+
             fileType = 'nii';
         } else if (type === 'mask') {
             filePath = path.join(resultsDir, 'tumor_mask.npy');

@@ -206,15 +206,9 @@ function BlockchainAudit() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-md justify-center mt-xl">
-          <button className="btn btn-secondary" onClick={() => navigate('/explainability')}>
-            ← Back to Explainability
-          </button>
+        <div className="flex gap-md justify-center">
           <button className="btn btn-primary" onClick={() => navigate('/dashboard')}>
-            Return to Dashboard
-          </button>
-          <button className="btn btn-outline" onClick={exportAuditLog}>
-            Export Audit Log
+            Return to Dashboard →
           </button>
         </div>
       </div>

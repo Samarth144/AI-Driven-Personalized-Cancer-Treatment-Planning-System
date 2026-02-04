@@ -13,7 +13,45 @@ from scipy import stats
 # =====================================================
 # CONFIG
 # =====================================================
-MRI_PATH = "../Test_Data/BraTS20_Training_001_flair.nii"
+import sys
+import os
+import argparse
+
+# Default path
+DEFAULT_MRI = "../Test_Data/BraTS20_Training_001_flair.nii"
+
+parser = argparse.ArgumentParser(description='Inference Segmentation')
+parser.add_argument('--t1', type=str, help='Path to T1 MRI')
+parser.add_argument('--t1ce', type=str, help='Path to T1CE MRI')
+parser.add_argument('--t2', type=str, help='Path to T2 MRI')
+parser.add_argument('--flair', type=str, help='Path to FLAIR MRI')
+parser.add_argument('legacy_path', nargs='?', help='Legacy single path argument')
+
+args = parser.parse_args()
+
+# Select the primary input for the single-channel model
+# Priority: FLAIR > T1CE > T1 > T2 > Legacy > Default
+MRI_PATH = None
+
+if args.flair:
+    MRI_PATH = args.flair
+    print(f"Using FLAIR input: {MRI_PATH}")
+elif args.t1ce:
+    MRI_PATH = args.t1ce
+    print(f"Using T1CE input: {MRI_PATH}")
+elif args.t1:
+    MRI_PATH = args.t1
+    print(f"Using T1 input: {MRI_PATH}")
+elif args.t2:
+    MRI_PATH = args.t2
+    print(f"Using T2 input: {MRI_PATH}")
+elif args.legacy_path:
+    MRI_PATH = args.legacy_path
+    print(f"Using legacy input: {MRI_PATH}")
+else:
+    MRI_PATH = DEFAULT_MRI
+    print(f"Using default test input: {MRI_PATH}")
+
 MODEL_PATH = "../models/brats3d_final_model.pth"
 
 ROI_SIZE = (128, 128, 128)

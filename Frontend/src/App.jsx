@@ -6,6 +6,7 @@ import GlobalFooter from './components/GlobalFooter';
 import Home from './pages/Home';
 import About from './pages/About';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Tumor3DPage from './pages/Tumor3DPage';
 import PatientIntake from './pages/PatientIntake';
@@ -15,7 +16,6 @@ import Histopathology from './pages/Histopathology';
 import TreatmentPlan from './pages/TreatmentPlan';
 import OutcomePrediction from './pages/OutcomePrediction';
 import PathwaySimulator from './pages/PathwaySimulator';
-import Explainability from './pages/Explainability';
 import BlockchainAudit from './pages/BlockchainAudit';
 
 // Create a global theme instance
@@ -67,6 +67,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/tumor-3d" element={<Tumor3DPage />} />
             <Route path="/patients" element={<PatientIntake />} />
@@ -76,7 +77,6 @@ function App() {
             <Route path="/treatment-plan" element={<TreatmentPlan />} />
             <Route path="/outcome-prediction" element={<OutcomePrediction />} />
             <Route path="/pathway-simulator" element={<PathwaySimulator />} />
-            <Route path="/explainability" element={<Explainability />} />
             <Route path="/blockchain-audit" element={<BlockchainAudit />} />
           </Routes>
           </Box>

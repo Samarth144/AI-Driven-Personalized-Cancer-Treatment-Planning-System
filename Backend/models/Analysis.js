@@ -17,6 +17,10 @@ const Analysis = sequelize.define('Analysis', {
         type: DataTypes.ENUM('pending', 'processing', 'completed', 'failed'),
         defaultValue: 'pending'
     },
+    t1Path: { type: DataTypes.STRING, allowNull: true },
+    t1cePath: { type: DataTypes.STRING, allowNull: true },
+    t2Path: { type: DataTypes.STRING, allowNull: true },
+    flairPath: { type: DataTypes.STRING, allowNull: true },
     // Dedicated MRI Extracted Columns
     tumorVolume: {
         type: DataTypes.FLOAT, // cm3

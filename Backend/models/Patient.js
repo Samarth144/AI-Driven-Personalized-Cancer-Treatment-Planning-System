@@ -84,6 +84,18 @@ const Patient = sequelize.define('Patient', {
     allergies: {
         type: DataTypes.ARRAY(DataTypes.STRING),
         defaultValue: []
+    },
+    pathologyReportPath: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    mriPaths: {
+        type: DataTypes.JSONB,
+        defaultValue: {}
+    },
+    pathologyAnalysis: {
+        type: DataTypes.JSONB,
+        defaultValue: {}
     }
 });
 

@@ -1,402 +1,622 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend
-} from 'chart.js';
+import React, { useState, useEffect } from 'react';
+import { 
+  Box, Container, Grid, Typography, Button, Chip, LinearProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow 
+} from '@mui/material';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate, useLocation } from 'react-router-dom';
+import axios from 'axios';
+import { Chart as ChartJS, RadialLinearScale, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip as ChartTooltip, Legend, Filler } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
+import BiotechIcon from '@mui/icons-material/Biotech';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ScienceIcon from '@mui/icons-material/Science';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh'; 
 import './GenomicAnalysis.css';
 
-// Register ChartJS components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend
-);
+ChartJS.register(RadialLinearScale, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, ChartTooltip, Legend, Filler);
 
-import axios from 'axios';
-import { useLocation } from 'react-router-dom';
+const colors = {
+  purple: '#8B5CF6', 
+  cyan: '#00F0FF',
+  teal: '#059789',
+  amber: '#F59E0B',
+  red: '#EF4444',
+  muted: '#64748B',
+};
 
-function GenomicAnalysis() {
+const MARKER_CONFIG = {
+  Brain: [
+    { id: 'idh1', label: 'IDH1 Status', sub: 'Isocitrate Dehydrogenase' },
+    { id: 'mgmt', label: 'MGMT Promoter', sub: 'Methylation Status' },
+  ],
+  Breast: [
+    { id: 'er', label: 'ER (ESR1)', sub: 'Estrogen Receptor' },
+    { id: 'pr', label: 'PR (PGR)', sub: 'Progesterone Receptor' },
+    { id: 'her2', label: 'HER2 (ERBB2)', sub: 'Human Epidermal Growth Factor' },
+    { id: 'brca', label: 'BRCA Status', sub: 'Breast Cancer Gene' },
+    { id: 'pdl1', label: 'PD-L1 (CD274)', sub: 'Programmed Death-Ligand 1' },
+  ],
+  Lung: [
+    { id: 'egfr', label: 'EGFR Mutation', sub: 'Epidermal Growth Factor' },
+    { id: 'kras', label: 'KRAS Mutation', sub: 'Kirsten Rat Sarcoma' },
+    { id: 'alk', label: 'ALK Translocation', sub: 'Anaplastic Lymphoma Kinase' },
+    { id: 'ros1', label: 'ROS1 Rearrangement', sub: 'Proto-oncogene Tyrosine' },
+    { id: 'pdl1', label: 'PD-L1 Expression', sub: 'Immune Checkpoint' },
+  ],
+  Liver: [
+    { id: 'afp', label: 'AFP Biomarker', sub: 'Alpha-Fetoprotein' },
+  ],
+  Pancreas: [
+    { id: 'brca', label: 'BRCA Status', sub: 'Breast Cancer Gene' },
+  ]
+};
+
+const VARIANT_LIBRARY = {
+  Brain: {
+    idh1: {
+      Mutated: { gene: 'IDH1', variant: 'R132H', type: 'Missense', freq: '85%', action: 'HIGH', sig: 'Favorable prognosis (Grade 4 Astrocytoma)' },
+      'Wild Type': { gene: 'IDH1', variant: 'Wild-Type', type: 'None', freq: 'N/A', action: 'LOW', sig: 'Aggressive GBM phenotype' }
+    },
+    mgmt: {
+      Methylated: { gene: 'MGMT', variant: 'Promoter Meth', type: 'Epigenetic', freq: '45%', action: 'HIGH', sig: 'Predicts TMZ sensitivity' },
+      Unmethylated: { gene: 'MGMT', variant: 'Unmethylated', type: 'Epigenetic', freq: '55%', action: 'LOW', sig: 'TMZ Resistance likely' }
+    }
+  },
+  Breast: {
+    her2: {
+      Positive: { gene: 'ERBB2', variant: 'Amplification', type: 'CNV', freq: '20%', action: 'HIGH', sig: 'Target for Trastuzumab/Pertuzumab' },
+      Negative: { gene: 'ERBB2', variant: 'Normal', type: 'None', freq: 'N/A', action: 'LOW', sig: 'Non-HER2 driven' }
+    },
+    er: {
+      Positive: { gene: 'ESR1', variant: 'Expression', type: 'Protein', freq: '70%', action: 'HIGH', sig: 'Endocrine Therapy Sensitive' },
+      Negative: { gene: 'ESR1', variant: 'Negative', type: 'None', freq: 'N/A', action: 'LOW', sig: 'Endocrine Resistant' }
+    },
+    brca: {
+      Mutated: { gene: 'BRCA1/2', variant: 'g.Mut', type: 'Germline', freq: '5%', action: 'HIGH', sig: 'PARP Inhibitor Sensitivity' },
+      'Wild Type': { gene: 'BRCA1/2', variant: 'Wild-Type', type: 'None', freq: 'N/A', action: 'LOW', sig: 'Standard Risk' }
+    }
+  },
+  Lung: {
+    egfr: {
+      Mutated: { gene: 'EGFR', variant: 'L858R / Ex19Del', type: 'Missense', freq: '15%', action: 'HIGH', sig: 'Osimertinib Sensitive' },
+      'Wild Type': { gene: 'EGFR', variant: 'Wild-Type', type: 'None', freq: 'N/A', action: 'LOW', sig: 'Standard Chemo/IO' }
+    },
+    kras: {
+      Mutated: { gene: 'KRAS', variant: 'G12C', type: 'Missense', freq: '25%', action: 'HIGH', sig: 'Sotorasib Sensitive' },
+      'Wild Type': { gene: 'KRAS', variant: 'Wild-Type', type: 'None', freq: 'N/A', action: 'LOW', sig: 'N/A' }
+    },
+    alk: {
+      Positive: { gene: 'ALK', variant: 'EML4-ALK Fusion', type: 'Translocation', freq: '5%', action: 'HIGH', sig: 'Alectinib Sensitive' },
+      Negative: { gene: 'ALK', variant: 'Negative', type: 'None', freq: 'N/A', action: 'LOW', sig: 'N/A' }
+    }
+  },
+  Liver: {
+    afp: {
+      'Very High': { gene: 'AFP', variant: 'Overexpression', type: 'Protein', freq: 'High', action: 'MEDIUM', sig: 'Poor Prognosis / Aggressive' },
+      Elevated: { gene: 'AFP', variant: 'Elevated', type: 'Protein', freq: 'Mod', action: 'LOW', sig: 'HCC Diagnostic' },
+      Normal: { gene: 'AFP', variant: 'Normal', type: 'None', freq: 'N/A', action: 'LOW', sig: 'Standard Risk' }
+    }
+  },
+  Pancreas: {
+    brca: {
+      Mutated: { gene: 'BRCA2', variant: 'Germline Mut', type: 'Frameshift', freq: '7%', action: 'HIGH', sig: 'POLO Trial (Olaparib)' },
+      'Wild Type': { gene: 'BRCA2', variant: 'Wild-Type', type: 'None', freq: 'N/A', action: 'LOW', sig: 'Standard FOLFIRINOX' }
+    }
+  }
+};
+
+const BiomarkerNode = ({ data, index }) => {
+  const isUnknown = data.status === 'Unknown';
+  const isPositive = ['Mutated', 'Methylated', 'Positive', 'Present', 'Elevated', '≥50%'].includes(data.status);
+  const statusColor = isUnknown ? colors.muted : isPositive ? colors.cyan : colors.purple;
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }} style={{ height: '100%' }}>
+      <Box className="biomarker-node-card" sx={{ border: `1px solid ${isUnknown ? 'rgba(255,255,255,0.1)' : statusColor}`, boxShadow: isUnknown ? 'none' : `0 0 20px ${statusColor}20` }}>
+        <Box className="node-connection-line" sx={{ bgcolor: statusColor }} />
+        <Box className="node-header">
+          <Typography variant="h6" className="node-title">{data.id.toUpperCase()}</Typography>
+          <BiotechIcon sx={{ color: statusColor, opacity: 0.8 }} />
+        </Box>
+        <Typography variant="body2" className="node-sub">{data.sub}</Typography>
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="caption" sx={{ color: colors.muted, display: 'block', mb: 0.5 }}>STATUS</Typography>
+          <Box className="node-status-badge" sx={{ bgcolor: `${statusColor}20`, border: `1px solid ${statusColor}40`, color: statusColor }}>
+            {data.status.toUpperCase()}
+          </Box>
+        </Box>
+        <Box>
+           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+             <Typography variant="caption" sx={{ color: colors.muted }}>SENSITIVITY</Typography>
+             <Typography variant="caption" sx={{ color: '#fff' }}>{isUnknown ? '0' : data.sens}%</Typography>
+           </Box>
+           <LinearProgress variant="determinate" value={isUnknown ? 0 : data.sens} sx={{ height: 4, bgcolor: 'rgba(255,255,255,0.1)', '& .MuiLinearProgress-bar': { bgcolor: statusColor } }} />
+        </Box>
+      </Box>
+    </motion.div>
+  );
+};
+
+const ActionBadge = ({ level }) => {
+  let color = colors.muted;
+  if (level === 'HIGH') color = colors.red; 
+  if (level === 'MEDIUM') color = colors.amber;
+  if (level === 'LOW') color = colors.purple;
+
+  return (
+    <Chip label={level} size="small" icon={<AutoFixHighIcon style={{ fontSize: 14 }} />} sx={{ bgcolor: `${color}20`, color: color, border: `1px solid ${color}40`, fontFamily: '"Rajdhani"', fontWeight: 700, height: '24px' }} />
+  );
+};
+
+const GenomicAnalysis = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [loading, setLoading] = useState(false);
-  const [genomicData, setGenomicData] = useState(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [markers, setMarkers] = useState([]);
+  const [variantsList, setVariantsList] = useState([]);
+  const [showResults, setShowResults] = useState(false);
   const [patientId, setPatientId] = useState(null);
   const [patientData, setPatientData] = useState(null);
 
-  // Helper to generate mock data exactly like the original app.js logic
-  const generateMockGenomicData = (type) => {
-    const isBrain = type === 'Brain';
-    return {
-      idh1: isBrain ? (Math.random() > 0.5 ? 'Mutant' : 'Wild-type') : 'N/A',
-      mgmt: isBrain ? (Math.random() > 0.5 ? 'Methylated' : 'Unmethylated') : 'N/A',
-      atrx: isBrain ? (Math.random() > 0.5 ? 'Mutant' : 'Wild-type') : 'N/A',
-      codeletion1p19q: isBrain ? (Math.random() > 0.7 ? 'Present' : 'Absent') : 'N/A',
-      treatmentSensitivity: {
-        temozolomide: parseFloat((Math.random() * 40 + 60).toFixed(1)),
-        radiation: parseFloat((Math.random() * 30 + 70).toFixed(1)),
-        immunotherapy: parseFloat((Math.random() * 50 + 30).toFixed(1)),
-        pcv: parseFloat((Math.random() * 30 + 50).toFixed(1))
-      }
-    };
-  };
+  const [classificationData, setClassificationData] = useState({
+    labels: ['Mesenchymal', 'Proneural', 'Classical', 'Neural'],
+    datasets: [{
+      label: 'Subtype Probability',
+      data: [75, 10, 10, 5],
+      backgroundColor: [
+        'rgba(139, 92, 246, 0.7)', 
+        'rgba(0, 240, 255, 0.7)',  
+        'rgba(245, 158, 11, 0.7)', 
+        'rgba(148, 163, 184, 0.7)' 
+      ],
+      borderColor: '#fff',
+      borderWidth: 2,
+    }],
+  });
+
+  const [sensitivityData, setSensitivityData] = useState({
+    labels: ['Temozolomide', 'Radiotherapy', 'Bevacizumab', 'Lomustine', 'Immunotherapy'],
+    datasets: [{
+      label: 'Predicted Efficacy (%)',
+      data: [12, 85, 45, 60, 30],
+      backgroundColor: ['rgba(239, 68, 68, 0.6)', 'rgba(5, 151, 137, 0.6)', 'rgba(245, 158, 11, 0.6)', 'rgba(0, 240, 255, 0.6)', 'rgba(139, 92, 246, 0.6)'],
+    }],
+  });
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const pid = params.get('patientId');
-    if (pid && pid !== 'null') {
-        setPatientId(pid);
-        fetchPatientData(pid);
+    if (pid) {
+      setPatientId(pid);
+      fetchPatientData(pid);
     }
   }, [location.search]);
 
   const fetchPatientData = async (pid) => {
-      try {
-          const token = localStorage.getItem('token');
-          const res = await axios.get(`http://localhost:8000/api/patients/${pid}`, {
-              headers: { Authorization: `Bearer ${token}` }
-          });
-          if (res.data.success) {
-              setPatientData(res.data.data);
-              const profile = res.data.data.genomicProfile || {};
-              setGenomicData({
-                  idh1: profile.idh1 || 'Unknown',
-                  mgmt: profile.mgmt || 'Unknown',
-                  atrx: profile.atrx || 'Unknown',
-                  codeletion1p19q: profile.codeletion1p19q || 'Unknown',
-                  treatmentSensitivity: {
-                    temozolomide: 0,
-                    radiation: 0,
-                    immunotherapy: 0,
-                    pcv: 0
-                  }
-              });
-          }
-      } catch (err) {
-          console.error("Failed to fetch patient data", err);
-      }
-  };
-
-  const runGenomicAnalysis = async () => {
-    setLoading(true);
     try {
-        const token = localStorage.getItem('token');
-        
-        // 1. Create Analysis Record
-        const createRes = await axios.post('http://localhost:8000/api/analyses', {
-            patientId: patientId,
-            analysisType: 'genomic',
-            status: 'completed', // For now, mock completion
-            data: generateMockGenomicData(patientData?.cancerType)
-        }, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (createRes.data.success) {
-            setGenomicData(createRes.data.data.data);
-        }
-    } catch (err) {
-        console.error("Analysis failed", err);
-    } finally {
-        setLoading(false);
-    }
-  };
-
-  // Chart data calculations
-  const sensitivityChartData = useMemo(() => {
-    if (!genomicData) return null;
-    return {
-      labels: ['Temozolomide', 'Radiation Therapy', 'Immunotherapy', 'PCV Chemotherapy'],
-      datasets: [{
-        label: 'Treatment Sensitivity (%)',
-        data: [
-          genomicData.treatmentSensitivity.temozolomide,
-          genomicData.treatmentSensitivity.radiation,
-          genomicData.treatmentSensitivity.immunotherapy,
-          genomicData.treatmentSensitivity.pcv
-        ],
-        backgroundColor: [
-          'hsla(210, 100%, 56%, 0.8)',
-          'hsla(180, 65%, 55%, 0.8)',
-          'hsla(270, 70%, 60%, 0.8)',
-          'hsla(190, 85%, 65%, 0.8)'
-        ],
-        borderRadius: 8
-      }]
-    };
-  }, [genomicData]);
-
-  const classificationChartData = {
-    labels: ['IDH-mutant', 'IDH-wildtype', 'Oligodendroglioma', 'Other'],
-    datasets: [{
-      data: [35, 45, 15, 5],
-      backgroundColor: [
-        'hsla(210, 100%, 56%, 0.8)',
-        'hsla(270, 70%, 60%, 0.8)',
-        'hsla(180, 65%, 55%, 0.8)',
-        'hsla(0, 0%, 60%, 0.5)'
-      ]
-    }]
-  };
-
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: {
-      y: {
-        beginAtZero: true,
-        max: 100,
-        ticks: { color: 'hsl(0, 0%, 75%)' },
-        grid: { color: 'hsla(0, 0%, 100%, 0.05)' }
-      },
-      x: {
-        ticks: { color: 'hsl(0, 0%, 75%)' },
-        grid: { color: 'hsla(0, 0%, 100%, 0.05)' }
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`http://localhost:8000/api/patients/${pid}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data.success) {
+        const p = res.data.data;
+        setPatientData(p);
+        const config = MARKER_CONFIG[p.cancerType] || MARKER_CONFIG.Brain;
+        setMarkers(config.map(m => ({ ...m, status: 'Unknown', sens: 0 })));
       }
-    },
-    plugins: {
-      legend: { labels: { color: 'hsl(0, 0%, 75%)' } }
+    } catch (err) {
+      console.error("Error fetching patient:", err);
     }
   };
 
-  const variants = [
-    { gene: 'IDH1', variant: 'R132H', type: 'Missense', frequency: '42%', actionability: 'high', significance: 'Favorable prognosis, TMZ sensitive' },
-    { gene: 'TP53', variant: 'R273C', type: 'Missense', frequency: '38%', actionability: 'medium', significance: 'Associated with astrocytoma' },
-    { gene: 'EGFR', variant: 'Amplification', type: 'CNV', frequency: '15%', actionability: 'high', significance: 'Potential targeted therapy' },
-    { gene: 'PTEN', variant: 'Loss', type: 'Deletion', frequency: '22%', actionability: 'medium', significance: 'Poor prognosis marker' },
-    { gene: 'TERT', variant: 'C228T', type: 'Promoter', frequency: '55%', actionability: 'low', significance: 'Telomerase activation' }
-  ];
+  const handleAnalyze = () => {
+    setAnalyzing(true);
+    setTimeout(() => {
+      const config = MARKER_CONFIG[patientData.cancerType] || MARKER_CONFIG.Brain;
+      const results = config.map(m => ({
+        ...m,
+        status: patientData.genomicProfile[m.id] || 'Unknown',
+        sens: 85 + Math.floor(Math.random() * 10)
+      }));
+      setMarkers(results);
+
+      const typeLib = VARIANT_LIBRARY[patientData.cancerType] || VARIANT_LIBRARY.Brain;
+      const calculatedVariants = [];
+      
+      if (patientData.genomicProfile) {
+        Object.entries(patientData.genomicProfile).forEach(([key, status]) => {
+            const geneEntry = typeLib[key.toLowerCase()]; 
+            if (geneEntry && geneEntry[status]) {
+                calculatedVariants.push(geneEntry[status]);
+            }
+        });
+      }
+
+      if (calculatedVariants.length === 0) {
+          calculatedVariants.push({ gene: '---', variant: 'No specific pathogenic variants found', type: 'N/A', freq: '---', action: 'LOW', sig: 'Standard Protocol' });
+      }
+      setVariantsList(calculatedVariants);
+
+      const birthDate = new Date(patientData.dateOfBirth);
+      const age = new Date().getFullYear() - birthDate.getFullYear();
+      const kps = patientData.kps || 100;
+
+      let newSubtypeData = [];
+      let newSubtypeLabels = [];
+      let newDrugData = [];
+      let newDrugLabels = [];
+
+      if (patientData.cancerType === 'Brain') {
+          newSubtypeLabels = ['Mesenchymal', 'Proneural', 'Classical', 'Neural'];
+          newDrugLabels = ['Temozolomide', 'Radiotherapy', 'Bevacizumab', 'Lomustine', 'Immunotherapy'];
+          
+          let mesenchymal = 25, proneural = 25, classical = 25, neural = 25;
+
+          if (patientData.genomicProfile.idh1 === 'Mutated') {
+              proneural = 70; mesenchymal = 10; classical = 10; neural = 10;
+              newDrugData = [85, 90, 40, 75, 50]; 
+          } else {
+              mesenchymal = 60; proneural = 10; classical = 20; neural = 10;
+              newDrugData = [15, 95, 50, 60, 20]; 
+          }
+
+          if (patientData.genomicProfile.mgmt === 'Methylated') {
+              newDrugData[0] = 95; 
+          } else if (patientData.genomicProfile.mgmt === 'Unmethylated') {
+              newDrugData[0] = 15; 
+          }
+
+          if (age < 50) { proneural += 15; mesenchymal -= 15; } 
+          else { mesenchymal += 10; proneural -= 10; }
+
+          if (kps < 70) { mesenchymal += 15; classical -= 15; }
+
+          const total = mesenchymal + proneural + classical + neural;
+          newSubtypeData = [
+              Math.round((mesenchymal / total) * 100),
+              Math.round((proneural / total) * 100),
+              Math.round((classical / total) * 100),
+              Math.round((neural / total) * 100)
+          ];
+      } 
+      else if (patientData.cancerType === 'Breast') {
+          newSubtypeLabels = ['Luminal A', 'Luminal B', 'HER2-Enriched', 'Basal-like'];
+          newDrugLabels = ['Trastuzumab', 'Tamoxifen', 'Doxorubicin', 'Paclitaxel', 'Pembrolizumab'];
+
+          if (patientData.genomicProfile.her2 === 'Positive') {
+             newSubtypeData = [10, 10, 75, 5]; 
+             newDrugData = [98, 30, 85, 80, 45]; 
+          } else if (patientData.genomicProfile.er === 'Positive') {
+             newSubtypeData = [65, 25, 5, 5]; 
+             newDrugData = [5, 95, 45, 50, 20]; 
+          } else {
+             newSubtypeData = [10, 10, 10, 70]; 
+             newDrugData = [5, 10, 92, 90, 85]; 
+          }
+      }
+      else if (patientData.cancerType === 'Lung') {
+          newSubtypeLabels = ['Adenocarcinoma', 'Squamous Cell', 'Large Cell', 'Neuroendocrine'];
+          newDrugLabels = ['Osimertinib', 'Cisplatin', 'Pembrolizumab', 'Docetaxel', 'Bevacizumab'];
+
+          if (patientData.genomicProfile.egfr === 'Mutated') {
+              newSubtypeData = [85, 5, 5, 5]; 
+              newDrugData = [96, 45, 30, 50, 65]; 
+          } else if (patientData.genomicProfile.alk === 'Positive') {
+              newSubtypeData = [80, 10, 5, 5];
+              newDrugLabels[0] = 'Alectinib'; 
+              newDrugData = [95, 50, 40, 55, 60];
+          } else {
+              newSubtypeData = [40, 40, 10, 10]; 
+              newDrugData = [10, 85, 90, 80, 55]; 
+          }
+      }
+      else if (patientData.cancerType === 'Liver') {
+          newSubtypeLabels = ['Proliferative', 'Non-Proliferative', 'Stem-Cell', 'Unclassified'];
+          newDrugLabels = ['Sorafenib', 'Lenvatinib', 'Atezolizumab', 'Bevacizumab', 'Gemcitabine'];
+
+          if (patientData.genomicProfile.afp === 'Very High' || patientData.genomicProfile.afp === 'Elevated') {
+              newSubtypeData = [75, 10, 10, 5]; 
+              newDrugData = [50, 60, 90, 85, 40]; 
+          } else {
+              newSubtypeData = [20, 70, 5, 5]; 
+              newDrugData = [75, 70, 60, 50, 30]; 
+          }
+      }
+      else if (patientData.cancerType === 'Pancreas') {
+          newSubtypeLabels = ['Basal-like', 'Classical', 'Exocrine', 'Unclassified'];
+          newDrugLabels = ['Olaparib', 'Gemcitabine', 'FOLFIRINOX', 'Paclitaxel', 'Erlotinib'];
+
+          if (patientData.genomicProfile.brca === 'Mutated') {
+              newSubtypeData = [20, 60, 15, 5]; 
+              newDrugData = [95, 75, 80, 45, 30]; 
+          } else {
+              newSubtypeData = [65, 20, 10, 5]; 
+              newDrugData = [10, 85, 92, 80, 15]; 
+          }
+      }
+
+      setClassificationData({
+          labels: newSubtypeLabels,
+          datasets: [{
+              label: 'Subtype Probability',
+              data: newSubtypeData,
+              backgroundColor: [
+                'rgba(139, 92, 246, 0.7)', 
+                'rgba(0, 240, 255, 0.7)',  
+                'rgba(245, 158, 11, 0.7)', 
+                'rgba(148, 163, 184, 0.7)' 
+              ],
+              borderColor: '#fff',
+              borderWidth: 2,
+          }]
+      });
+
+      setSensitivityData({
+          labels: newDrugLabels,
+          datasets: [{
+              label: 'Predicted Efficacy (%)',
+              data: newDrugData,
+              backgroundColor: ['rgba(239, 68, 68, 0.6)', 'rgba(5, 151, 137, 0.6)', 'rgba(245, 158, 11, 0.6)', 'rgba(0, 240, 255, 0.6)', 'rgba(139, 92, 246, 0.6)'],
+          }]
+      });
+
+      setAnalyzing(false);
+      setShowResults(true);
+    }, 2000);
+  };
 
   return (
-    <>
-      <div className="container genomic-container">
-        <div className="flex justify-between items-center mb-xl">
-          <div>
-            <h1>Genomic & Molecular Biomarker Analysis</h1>
-            <p className="text-secondary">AI-powered interpretation of key cancer biomarkers</p>
-          </div>
-          <button className="btn btn-primary" onClick={runGenomicAnalysis} disabled={loading}>
-            {loading ? 'Analyzing...' : '🧬 Analyze Biomarkers'}
-          </button>
-        </div>
+    <Box className="genomic-analysis-root">
+      <Container maxWidth={false} sx={{ width: '100%', px: 0 }}>
 
-        {/* Key Biomarkers */}
-        <div className="biomarker-grid">
-          {/* IDH1 */}
-          <div className="biomarker-card">
-            <div className="biomarker-header">
-              <div className="icon-circle">🧬</div>
-              <span className="badge badge-info">IDH1</span>
-            </div>
-            <h3>IDH1 Status</h3>
-            <div className="biomarker-status">
-              {loading ? '--' : (genomicData?.idh1 || '--')}
-            </div>
-            <p className="text-secondary">Isocitrate Dehydrogenase 1 mutation status</p>
+        <Box className="genomic-header-row" sx={{ px: { xs: 2, md: 6 } }}>
+          <Box>
+            <Box className="genomic-subtitle-row">
+               <ScienceIcon sx={{ color: colors.purple }} />
+               <Typography variant="overline" sx={{ color: colors.purple, letterSpacing: '2px', fontWeight: 700 }}>MOLECULAR PATHOLOGY</Typography>
+            </Box>
+            <Typography variant="h3" className="genomic-page-title">GENOMIC BIOMARKER ANALYSIS</Typography>
+          </Box>
+                              <Button 
+                                variant="contained" 
+                                size="large" 
+                                disabled={analyzing || showResults} 
+                                onClick={handleAnalyze} 
+                                className="genomic-analyze-btn" 
+                                sx={{ height: '56px' }}
+                                startIcon={
+                                  analyzing ? (
+                                    <div className="spinner-icon" style={{ verticalAlign: 'middle' }} />
+                                  ) : showResults ? (
+                                    <CheckCircleIcon />
+                                  ) : (
+                                    <PlayArrowIcon />
+                                  )
+                                }
+                              >
+                                {analyzing ? 'SEQUENCING DNA...' : showResults ? 'ANALYSIS COMPLETE' : 'ANALYZE BIOMARKERS'}
+                              </Button>
+        </Box>
 
-            <div className="mt-md">
-              <div className="text-secondary" style={{ fontSize: '0.875rem', marginBottom: 'var(--spacing-sm)' }}>
-                Treatment Sensitivity
-              </div>
-              <div className="sensitivity-bar">
-                <div 
-                  className="sensitivity-fill" 
-                  style={{ width: loading ? '0%' : `${genomicData?.treatmentSensitivity?.temozolomide || 0}%` }}
-                >
-                  {loading ? '' : `${genomicData?.treatmentSensitivity?.temozolomide || 0}%`}
-                </div>
-              </div>
-            </div>
-          </div>
+        <Grid container spacing={3} sx={{ mb: 6, px: { xs: 2, md: 6 } }}>
+           {markers.map((m, i) => (
+             <Grid item xs={12} sm={6} md={3} lg={markers.length > 4 ? 2.4 : 3} key={m.id}>
+               <BiomarkerNode data={m} index={i} />
+             </Grid>
+           ))}
+        </Grid>
 
-          {/* MGMT */}
-          <div className="biomarker-card">
-            <div className="biomarker-header">
-              <div className="icon-circle">🔬</div>
-              <span className="badge badge-info">MGMT</span>
-            </div>
-            <h3>MGMT Promoter</h3>
-            <div className="biomarker-status">
-               {loading ? '--' : (genomicData?.mgmt || '--')}
-            </div>
-            <p className="text-secondary">Methylation status - TMZ sensitivity predictor</p>
+        <AnimatePresence>
+          {showResults && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+              
+              <Grid container sx={{ mb: 4, justifyContent: 'center' }}>
+                <Grid item>
+                  <Box className="variant-panel" sx={{ p: 4, height: '450px', position: 'relative' }}>
+                    <Typography variant="h6" sx={{ fontFamily: '"Rajdhani"', color: '#fff', mb: 3, borderBottom: '1px solid rgba(255,255,255,0.1)', pb: 1, letterSpacing: '1px' }}>
+                      MOLECULAR SUBTYPE DISTRIBUTION (CLINICAL PHENOTYPING)
+                    </Typography>
+                    <div style={{ height: '350px', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', paddingBottom: '1%' }}>
+                      <Doughnut 
+                        data={classificationData} 
+                        options={{ 
+                          cutout: '75%',
+                          maintainAspectRatio: false, 
+                          plugins: { 
+                            legend: { 
+                              position: 'right', 
+                              labels: { 
+                                color: '#94A3B8', 
+                                font: { family: 'Space Grotesk', size: 14 }, 
+                                boxWidth: 15, 
+                                padding: 30 
+                              } 
+                            } 
+                          },
+                        }} 
+                      />
+                    </div>
+                  </Box>
+                </Grid>
+              </Grid>
 
-            <div className="mt-md">
-              <div className="text-secondary sensitivity-label">
-                Temozolomide Sensitivity
-              </div>
-              <div className="sensitivity-bar">
-                <div 
-                  className="sensitivity-fill" 
-                  style={{ width: loading ? '0%' : `${genomicData?.treatmentSensitivity?.temozolomide || 0}%` }}
-                >
-                  {loading ? '' : `${genomicData?.treatmentSensitivity?.temozolomide || 0}%`}
-                </div>
-              </div>
-            </div>
-          </div>
+              <Grid container sx={{ mb: 4, justifyContent: 'center' }}>
+                <Grid item>
+                  <Box className="variant-panel" sx={{ p: 4, height: '450px' }}>
+                    <Typography variant="h6" sx={{ fontFamily: '"Rajdhani"', color: '#fff', mb: 3, borderBottom: '1px solid rgba(255,255,255,0.1)', pb: 1, letterSpacing: '1px' }}>
+                      TREATMENT SENSITIVITY PREDICTIONS (DRUG EFFICACY)
+                    </Typography>
+                    <div style={{ height: '350px' }}>
+                      <Bar 
+                        data={sensitivityData} 
+                        options={{ 
+                          maintainAspectRatio: false, 
+                          scales: { 
+                            y: { 
+                              grid: { color: 'rgba(255,255,255,0.1)' }, 
+                              ticks: { color: '#94A3B8', font: { family: 'Space Grotesk' } } 
+                            }, 
+                            x: { 
+                              grid: { display: false }, 
+                              ticks: { color: '#fff', font: { family: 'Rajdhani', size: 14, weight: 700 } } 
+                            } 
+                          },
+                          plugins: {
+                            legend: { display: false },
+                            tooltip: { 
+                              backgroundColor: 'rgba(11, 18, 33, 0.9)', 
+                              titleFont: { family: 'Rajdhani' }, 
+                              bodyFont: { family: 'Space Grotesk' },
+                              borderColor: '#8B5CF6',
+                              borderWidth: 1
+                            }
+                          }
+                        }} 
+                      />
+                    </div>
+                  </Box>
+                </Grid>
+              </Grid>
 
-          {/* ATRX */}
-          <div className="biomarker-card">
-            <div className="biomarker-header">
-              <div className="icon-circle">🧪</div>
-              <span className="badge badge-info">ATRX</span>
-            </div>
-            <h3>ATRX Status</h3>
-            <div className="biomarker-status">
-              {loading ? '--' : (genomicData?.atrx || '--')}
-            </div>
-            <p className="text-secondary">Alpha-thalassemia/mental retardation syndrome X-linked</p>
+              <Grid container sx={{ mb: 4, justifyContent: 'center' }}>
+                <Grid item xs={12}>
+                  <Box className="variant-panel">
+                    <Box className="variant-panel-header">
+                      <Typography variant="h6" sx={{ fontFamily: '"Rajdhani"', fontWeight: 700, color: '#fff' }}>DETECTED VARIANTS & ACTIONABILITY</Typography>
+                    </Box>
+                    <TableContainer>
+                      <Table>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell className="variant-table-th">GENE</TableCell>
+                            <TableCell className="variant-table-th">VARIANT</TableCell>
+                            <TableCell className="variant-table-th">TYPE</TableCell>
+                            <TableCell className="variant-table-th">FREQ</TableCell>
+                            <TableCell className="variant-table-th">ACTIONABILITY</TableCell>
+                            <TableCell className="variant-table-th">SIGNIFICANCE</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {variantsList.map((row, idx) => (
+                            <TableRow key={idx} className="table-row-hover">
+                              <TableCell className="variant-table-cell variant-gene-cell">{row.gene}</TableCell>
+                              <TableCell className="variant-table-cell">{row.variant}</TableCell>
+                              <TableCell className="variant-table-cell">{row.type}</TableCell>
+                              <TableCell className="variant-table-cell">{row.freq}</TableCell>
+                              <TableCell className="variant-table-cell"><ActionBadge level={row.action} /></TableCell>
+                              <TableCell className="variant-table-cell" sx={{ color: colors.muted + '!important' }}>{row.sig}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Box>
+                </Grid>
+              </Grid>
 
-            <div className="mt-md">
-              <div className="text-secondary sensitivity-label">
-                Prognostic Indicator
-              </div>
-              <div className="sensitivity-bar">
-                <div 
-                  className="sensitivity-fill" 
-                  style={{ width: loading ? '0%' : '94.1%' }}
-                >
-                  {loading ? '' : '94.1%'}
-                </div>
-              </div>
-            </div>
-          </div>
+              <Grid container sx={{ mb: 4, justifyContent: 'center' }}>
+                <Grid item xs={12}>
+                  <Box className="variant-panel summary-panel" sx={{ border: `1px solid ${colors.purple}`, bgcolor: `${colors.purple}05`, p: 4 }}>
+                    <Box className="summary-classification-row">
+                      <WarningAmberIcon sx={{ color: colors.purple }} />
+                      <Typography variant="overline" sx={{ color: colors.purple, fontWeight: 700, letterSpacing: '1px' }}>MOLECULAR CLASSIFICATION</Typography>
+                    </Box>
+                    
+                    <Typography variant="h4" className="summary-diagnosis-title">
+                      {patientData.cancerType === 'Brain' ? (
+                          patientData.genomicProfile.idh1 === 'Mutated' ? 'IDH-Mutant Astrocytoma' : 'IDH-Wildtype Glioblastoma'
+                      ) : patientData.cancerType === 'Breast' ? (
+                          patientData.genomicProfile.her2 === 'Positive' ? 'HER2-Positive Carcinoma' : 'Invasive Ductal Carcinoma'
+                      ) : patientData.cancerType === 'Lung' ? (
+                          patientData.genomicProfile.egfr === 'Mutated' ? 'EGFR-Mutant NSCLC' : 'Non-Small Cell Lung Ca'
+                      ) : `${patientData.cancerType} Malignancy`}
+                    </Typography>
 
-          {/* 1p/19q */}
-          <div className="biomarker-card">
-            <div className="biomarker-header">
-              <div className="icon-circle">📊</div>
-              <span className="badge badge-info">1p/19q</span>
-            </div>
-            <h3>1p/19q Codeletion</h3>
-            <div className="biomarker-status">
-              {loading ? '--' : (genomicData?.codeletion1p19q || '--')}
-            </div>
-            <p className="text-secondary">Chromosomal codeletion - oligodendroglioma marker</p>
+                    <Typography variant="body2" sx={{ color: colors.muted, fontFamily: '"Space Grotesk"', mb: 4, fontWeight: 600 }}>
+                      {patientData.cancerType === 'Brain' ? 'WHO CNS5 GRADE 4 • ' : 'MOLECULAR SUBTYPE • '}
+                      {patientData.genomicProfile.idh1 === 'Mutated' ? 'FAVORABLE PROGNOSIS' : 'AGGRESSIVE PHENOTYPE'}
+                    </Typography>
+                    
+                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4, alignItems: 'center' }}>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="caption" sx={{ color: colors.muted, display: 'block', mb: 2, fontSize: '0.9rem', fontWeight: 700 }}>KEY FINDINGS</Typography>
+                        <Box>
+                          {markers.map((m) => (
+                             <Box key={m.id} sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                               <Box sx={{ minWidth: '4px', bgcolor: m.status === 'Unknown' ? colors.muted : ['Mutated', 'Methylated', 'Positive', 'Present'].includes(m.status) ? colors.cyan : colors.purple, borderRadius: '2px' }} />
+                               <Box>
+                                 <Typography variant="subtitle2" sx={{ color: '#fff', fontFamily: '"Space Grotesk"', fontSize: '1.1rem', fontWeight: 600 }}>{m.label}: <span style={{ color: m.status === 'Unknown' ? colors.muted : '#fff' }}>{m.status}</span></Typography>
+                                 <Typography variant="caption" sx={{ color: colors.muted, fontSize: '0.85rem' }}>{m.sub}</Typography>
+                               </Box>
+                             </Box>
+                          ))}
+                        </Box>
+                      </Box>
+                      
+                      <Box sx={{ flex: 1 }}>
+                        <Box className="summary-implication-box" sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', p: 3 }}>
+                          <Typography variant="caption" sx={{ color: colors.muted, display: 'block', mb: 1, fontSize: '0.9rem', fontWeight: 700 }}>TREATMENT IMPLICATION</Typography>
+                          <Typography variant="body2" sx={{ color: '#fff', fontFamily: '"Space Grotesk"', lineHeight: 1.5, fontSize: '1rem' }}>
+                             {(() => {
+                                 const age = new Date().getFullYear() - new Date(patientData.dateOfBirth).getFullYear();
+                                 const kps = patientData.kps || 100;
+                                 
+                                 if (patientData.cancerType === 'Brain') {
+                                     if (patientData.genomicProfile.mgmt === 'Unknown') return "Biomarker status pending. Provisional Standard Stupp Protocol advised pending methylation results.";
+                                     if (patientData.genomicProfile.mgmt === 'Unmethylated') return "TMZ resistance likely. Prioritize clinical trials or consider Regorafenib/Lomustine based on progression.";
+                                     if (age > 70 && patientData.genomicProfile.mgmt === 'Methylated') return "Due to advanced age, consider Hypofractionated Radiotherapy + TMZ (Perry Regimen) to minimize toxicity while maintaining efficacy.";
+                                     return "Standard Stupp Protocol (TMZ + Radiotherapy) highly recommended. Favorable methylation status predicts good response.";
+                                 }
+                                 
+                                 if (patientData.cancerType === 'Lung') {
+                                     if (patientData.genomicProfile.egfr === 'Mutated') return "Osimertinib (Tagrisso) is the preferred 1st-line therapy. Avoid Immunotherapy as monotherapy due to low efficacy in EGFR+.";
+                                     if (patientData.genomicProfile.alk === 'Positive') return "Alectinib or Brigatinib indicated. Superior CNS penetration required for ALK+ neuro-protection.";
+                                     return "Standard Chemo-Immunotherapy (Pembrolizumab + Chemo) indicated in absence of driver mutations.";
+                                 }
 
-            <div className="mt-md">
-              <div className="text-secondary sensitivity-label">
-                Chemotherapy Response
-              </div>
-              <div className="sensitivity-bar">
-                <div 
-                  className="sensitivity-fill" 
-                  style={{ width: loading ? '0%' : `${genomicData?.treatmentSensitivity?.pcv || 0}%` }}
-                >
-                  {loading ? '' : `${genomicData?.treatmentSensitivity?.pcv || 0}%`}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+                                 if (patientData.cancerType === 'Breast') {
+                                     if (patientData.genomicProfile.her2 === 'Positive') return "Trastuzumab + Pertuzumab (Dual blockade) + Chemo is standard of care. Monitor cardiac function.";
+                                     if (patientData.genomicProfile.er === 'Positive') return "Endocrine Therapy (Tamoxifen/AI) + CDK4/6 Inhibitor indicated. Chemo may be spared based on Oncotype DX.";
+                                     return "Triple Negative: Aggressive Chemo-Immunotherapy required. Consider Platinum agents if BRCA+.";
+                                 }
 
-        {/* Treatment Sensitivity Chart */}
-                  <div className="card-glass mb-xl">
-                  <h3>Treatment Sensitivity Predictions</h3>
-                  <p className="text-secondary mb-lg">Based on genomic biomarker profile</p>
-        
-                  <div className="chart-wrapper-lg">
-                    {!loading && genomicData && <Bar data={sensitivityChartData} options={chartOptions} />}
-                  </div>
-                </div>
-        {/* Variant Analysis */}
-        <div className="card-glass mb-xl">
-          <h3>Detected Variants & Actionability</h3>
-          <p className="text-secondary mb-lg">Clinically relevant genomic variants with treatment implications</p>
+                                 return "Standard protocol based on stage and performance status. Genomic targets not yet identified.";
+                             })()}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Box>
+                  </Box>
+                </Grid>
+              </Grid>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-          <table className="variant-table">
-            <thead>
-              <tr>
-                <th>Gene</th>
-                <th>Variant</th>
-                <th>Type</th>
-                <th>Frequency</th>
-                <th>Actionability</th>
-                <th>Clinical Significance</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan="6" className="text-center text-secondary">Analyzing...</td>
-                </tr>
-              ) : (
-                variants.map((v, index) => (
-                  <tr key={index}>
-                    <td><strong>{v.gene}</strong></td>
-                    <td><code className="variant-code">{v.variant}</code></td>
-                    <td>{v.type}</td>
-                    <td>{v.frequency}</td>
-                    <td><span className={`actionability-badge actionability-${v.actionability}`}>{v.actionability.toUpperCase()}</span></td>
-                    <td>{v.significance}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Molecular Classification */}
-        <div className="grid-2 mb-xl">
-          <div className="card-glass">
-            <h3>Molecular Classification</h3>
-            <div className="chart-wrapper-md">
-              <Doughnut data={classificationChartData} options={{ ...chartOptions, plugins: { legend: { position: 'bottom', labels: { color: 'hsl(0, 0%, 75%)' } } } }} />
-            </div>
-          </div>
-
-          <div className="card-glass">
-            <h3>Biomarker Summary</h3>
-            <div className="text-secondary">
-              {loading || !genomicData ? (
-                'Run analysis to generate biomarker summary...'
-              ) : (
-                <div className="summary-text">
-                  <p><strong>Molecular Subtype:</strong> {genomicData.idh1 === 'Mutant' ? 'IDH-mutant Astrocytoma' : 'IDH-wildtype Glioblastoma'}</p>
-                  
-                  <p className="mt-md"><strong>Key Findings:</strong></p>
-                  <ul className="summary-list">
-                    <li>IDH1 {genomicData.idh1} - {genomicData.idh1 === 'Mutant' ? 'Better prognosis expected' : 'Aggressive phenotype'}</li>
-                    <li>MGMT {genomicData.mgmt} - {genomicData.mgmt === 'Methylated' ? 'Good TMZ response predicted' : 'Limited TMZ benefit'}</li>
-                    <li>ATRX {genomicData.atrx} - {genomicData.atrx === 'Mutant' ? 'Consistent with lower-grade' : 'Higher-grade features'}</li>
-                    <li>1p/19q {genomicData.codeletion1p19q} - {genomicData.codeletion1p19q === 'Present' ? 'Oligodendroglioma confirmed' : 'Astrocytic lineage'}</li>
-                  </ul>
-                  
-                  <p className="mt-md"><strong>Treatment Implications:</strong></p>
-                  <p>Based on the biomarker profile, {genomicData.mgmt === 'Methylated' ? 'temozolomide chemotherapy is strongly recommended' : 'alternative chemotherapy regimens should be considered'}. {genomicData.idh1 === 'Mutant' ? 'IDH inhibitors may be beneficial.' : 'Standard of care with radiation and chemotherapy is recommended.'}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-md justify-center">
-          <button className="btn btn-secondary" onClick={() => navigate('/mri-analysis')}>
-            ← Back to MRI Analysis
-          </button>
-          <button className="btn btn-primary" onClick={() => navigate('/treatment-plan')}>
-            Next: Treatment Planning →
-          </button>
-          <button className="btn btn-outline" onClick={() => navigate('/histopathology')}>
-            View Histopathology
-          </button>
-        </div>
-      </div>
-    </>
+        <Box className="genomic-footer" sx={{ px: { xs: 2, md: 6 } }}>
+           <Button 
+             startIcon={<ArrowBackIcon />} 
+             className="footer-nav-btn" 
+             onClick={() => navigate(`/mri-analysis?patientId=${patientId}`)}
+           >
+             Back to MRI Analysis
+           </Button>
+           <Box sx={{ display: 'flex', gap: 2 }}>
+             <Button startIcon={<ScienceIcon />} variant="outlined" className="footer-secondary-btn" onClick={() => navigate(`/histopathology?patientId=${patientId}`)}>VIEW HISTOPATHOLOGY</Button>
+             <Button endIcon={<ArrowForwardIcon />} variant="contained" className="footer-action-btn" onClick={() => navigate(`/treatment-plan?patientId=${patientId}`)}>PROCEED TO PLANNING</Button>
+           </Box>
+        </Box>
+      </Container>
+      <style>{`
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .spinner-icon { width: 16px; height: 16px; border: 2px solid #000; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; }
+      `}</style>
+    </Box>
   );
-}
+};
 
 export default GenomicAnalysis;

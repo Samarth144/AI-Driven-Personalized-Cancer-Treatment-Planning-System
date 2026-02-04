@@ -31,3 +31,10 @@ npm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+
+
+# Backend Uploads
+Backend/uploads/mri/*
+!Backend/uploads/mri/.gitkeep
+Backend/uploads/reports/*
+!Backend/uploads/reports/.gitkeep

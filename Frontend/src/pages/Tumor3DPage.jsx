@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
+import {
   Box, Grid, Typography, TextField, Button, IconButton, Switch, Tooltip, Chip, Slider, Divider
 } from '@mui/material';
 import { motion } from 'framer-motion';
@@ -37,15 +37,20 @@ const colors = {
 
 // --- SUB-COMPONENTS ---
 
-const ControlToggle = ({ label, active, onToggle }) => (
-  <Box sx={{ 
+const ControlToggle = ({ label, active, onToggle, disabled }) => (
+  <Box sx={{
     display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2,
-    p: 1.5, borderRadius: '4px', bgcolor: 'rgba(255,255,255,0.02)', border: `1px solid rgba(255,255,255,0.05)`
+    p: 1.5, borderRadius: '4px',
+    bgcolor: 'rgba(255,255,255,0.02)',
+    border: `1px solid rgba(255,255,255,0.05)`,
+    opacity: disabled ? 0.5 : 1,
+    pointerEvents: disabled ? 'none' : 'auto'
   }}>
     <Typography variant="body2" sx={{ fontFamily: '"Space Grotesk"', color: '#fff' }}>{label}</Typography>
-    <Switch 
-      checked={active} 
+    <Switch
+      checked={active}
       onChange={onToggle}
+      disabled={disabled}
       sx={{
         '& .MuiSwitch-switchBase.Mui-checked': { color: colors.cyan },
         '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { backgroundColor: colors.cyan },
@@ -55,8 +60,8 @@ const ControlToggle = ({ label, active, onToggle }) => (
 );
 
 const MetricBox = ({ label, value, unit, highlight = false }) => (
-  <Box sx={{ 
-    p: 2, mb: 2, borderRadius: '4px', 
+  <Box sx={{
+    p: 2, mb: 2, borderRadius: '4px',
     bgcolor: highlight ? 'rgba(0, 240, 255, 0.1)' : 'rgba(0,0,0,0.2)',
     border: `1px solid ${highlight ? colors.cyan : 'rgba(255,255,255,0.1)'}`,
     textAlign: 'center'
@@ -80,11 +85,11 @@ const ThreeDViewport = ({ volume, location, analysisId, layers, brainOpacity, se
     const viewer = viewerRef.current;
     if (!viewer || !viewer.model) return;
     const model = viewer.model;
-    
+
     model.materials.forEach((mat) => {
       const name = (mat.name || "").toLowerCase();
       const pbr = mat.pbrMetallicRoughness;
-      
+
       // Detection based on our Python forced naming
       const isTumor = name.includes('tumormaterial');
       const isEdema = name.includes('edemamaterial');
@@ -103,15 +108,15 @@ const ThreeDViewport = ({ volume, location, analysisId, layers, brainOpacity, se
       } else {
         // EVERYTHING ELSE (Brain)
         if (realisticView) {
-            // REALISTIC: Show original textures perfectly
-            const isVisible = layers.brain;
-            mat.setAlphaMode(isVisible ? "OPAQUE" : "BLEND");
-            pbr.setBaseColorFactor([1, 1, 1, isVisible ? 1 : 0]);
+          // REALISTIC: Show original textures perfectly
+          const isVisible = layers.brain;
+          mat.setAlphaMode(isVisible ? "OPAQUE" : "BLEND");
+          pbr.setBaseColorFactor([1, 1, 1, isVisible ? 1 : 0]);
         } else {
-            // SCHEMATIC: White + Opacity Slider
-            mat.setAlphaMode("BLEND");
-            const targetOpacity = layers.brain ? brainOpacity : 0;
-            pbr.setBaseColorFactor([1, 1, 1, targetOpacity]);
+          // SCHEMATIC: White + Opacity Slider
+          mat.setAlphaMode("BLEND");
+          const targetOpacity = layers.brain ? brainOpacity : 0;
+          pbr.setBaseColorFactor([1, 1, 1, targetOpacity]);
         }
       }
     });
@@ -130,9 +135,9 @@ const ThreeDViewport = ({ volume, location, analysisId, layers, brainOpacity, se
   };
 
   const getModelUrl = () => {
-      const pid = analysisId || 'test';
-      const name = analysisId ? 'tumor_with_brain.glb' : 'tumor_with_brain_new1.glb';
-      return `http://localhost:8000/api/analyses/${pid}/model?modelName=${name}&token=${localStorage.getItem('token')}`;
+    const pid = analysisId || 'test';
+    const name = analysisId ? 'tumor_with_brain.glb' : 'tumor_with_brain_new1.glb';
+    return `http://localhost:8000/api/analyses/${pid}/model?modelName=${name}&token=${localStorage.getItem('token')}`;
   };
 
   const modelUrl = getModelUrl();
@@ -142,29 +147,29 @@ const ThreeDViewport = ({ volume, location, analysisId, layers, brainOpacity, se
       <div className="viewport-grid-bg"></div>
 
       {modelUrl ? (
-          <model-viewer
-            key={`viewer-${realisticView}-${analysisId}`}
-            ref={viewerRef}
-            src={modelUrl}
-            camera-controls
-            auto-rotate={isRotating}
-            ar
-            ar-modes="scene-viewer webxr quick-look"
-            exposure="1.0"
-            shadow-intensity="1"
-            onLoad={updateMaterials}
-            style={{ width: '100%', flex: 1, background: 'transparent' }}
-          >
-          </model-viewer>
+        <model-viewer
+          key={`viewer-${realisticView}-${analysisId}`}
+          ref={viewerRef}
+          src={modelUrl}
+          camera-controls
+          auto-rotate={isRotating}
+          ar
+          ar-modes="scene-viewer webxr quick-look"
+          exposure="1.0"
+          shadow-intensity="1"
+          onLoad={updateMaterials}
+          style={{ width: '100%', flex: 1, background: 'transparent' }}
+        >
+        </model-viewer>
       ) : (
-          <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Typography variant="h6" sx={{ color: colors.muted }}>Surgical view inactive</Typography>
-          </Box>
+        <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Typography variant="h6" sx={{ color: colors.muted }}>Surgical view inactive</Typography>
+        </Box>
       )}
 
       {/* BRAIN OPACITY SLIDER OVERLAY (Only show in schematic mode) */}
       {!realisticView && (
-        <Box sx={{ 
+        <Box sx={{
           position: 'absolute', bottom: 85, left: '50%', transform: 'translateX(-50%)',
           bgcolor: 'rgba(22, 32, 50, 0.85)', px: 3, py: 1, borderRadius: '50px',
           border: `1px solid ${colors.border}`, width: '300px',
@@ -194,9 +199,9 @@ const ThreeDViewport = ({ volume, location, analysisId, layers, brainOpacity, se
 
       {/* HUD OVERLAY: LOCATION LABEL */}
       <Box sx={{ position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', textAlign: 'center', pointerEvents: 'none' }}>
-        <Chip 
-          icon={<BiotechIcon style={{ color: colors.cyan }} />} 
-          label={location || "LOADING MODEL..."} 
+        <Chip
+          icon={<BiotechIcon style={{ color: colors.cyan }} />}
+          label={location || "LOADING MODEL..."}
           className="hud-chip"
         />
         <Typography variant="caption" sx={{ display: 'block', color: colors.muted, mt: 0.5, fontFamily: '"JetBrains Mono"' }}>
@@ -205,7 +210,7 @@ const ThreeDViewport = ({ volume, location, analysisId, layers, brainOpacity, se
       </Box>
 
       {/* BOTTOM TOOLBAR */}
-      <Box sx={{ 
+      <Box sx={{
         position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)',
         bgcolor: 'rgba(22, 32, 50, 0.9)', border: `1px solid ${colors.border}`, borderRadius: '50px',
         p: 1, display: 'flex', gap: 1
@@ -230,8 +235,8 @@ const Tumor3DPage = () => {
   const [brainOpacity, setBrainOpacity] = useState(0.25);
   const [patientData, setPatientData] = useState(null);
   const [analysisId, setAnalysisId] = useState(null);
-  const [analysisMetrics, setAnalysisMetrics] = useState({ 
-    volume: null, edema: null, necrosis: null, enhancing: null, location: 'SCANNING...', sphericity: null 
+  const [analysisMetrics, setAnalysisMetrics] = useState({
+    volume: null, edema: null, necrosis: null, enhancing: null, location: 'SCANNING...', sphericity: null
   });
 
   const toggleLayer = (key) => setLayers({ ...layers, [key]: !layers[key] });
@@ -243,28 +248,28 @@ const Tumor3DPage = () => {
   }, [location.search]);
 
   const fetchPatientAndAnalysis = async (pid) => {
-      try {
-          const token = localStorage.getItem('token');
-          const [pRes, aRes] = await Promise.all([
-              axios.get(`http://localhost:8000/api/patients/${pid}`, { headers: { Authorization: `Bearer ${token}` } }),
-              axios.get(`http://localhost:8000/api/analyses/patient/${pid}`, { headers: { Authorization: `Bearer ${token}` } })
-          ]);
+    try {
+      const token = localStorage.getItem('token');
+      const [pRes, aRes] = await Promise.all([
+        axios.get(`http://localhost:8000/api/patients/${pid}`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`http://localhost:8000/api/analyses/patient/${pid}`, { headers: { Authorization: `Bearer ${token}` } })
+      ]);
 
-          if (pRes.data.success) setPatientData(pRes.data.data);
-          if (aRes.data.success && aRes.data.data.length > 0) {
-              const latest = aRes.data.data[0];
-              setAnalysisId(latest.id);
-              const data = latest.data;
-              const newMetrics = {};
-              if (data.volumetricAnalysis?.tumorVolume) newMetrics.volume = data.volumetricAnalysis.tumorVolume;
-              if (data.volumetricAnalysis?.edemaVolume) newMetrics.edema = data.volumetricAnalysis.edemaVolume;
-              if (data.volumetricAnalysis?.necrosisVolume) newMetrics.necrosis = data.volumetricAnalysis.necrosisVolume;
-              if (data.volumetricAnalysis?.enhancingVolume) newMetrics.enhancing = data.volumetricAnalysis.enhancingVolume;
-              if (data.tumorLocation) newMetrics.location = data.tumorLocation;
-              if (data.shapeFeatures?.sphericity) newMetrics.sphericity = data.shapeFeatures.sphericity;
-              setAnalysisMetrics(prev => ({ ...prev, ...newMetrics }));
-          }
-      } catch (err) { console.error("Error fetching data:", err); }
+      if (pRes.data.success) setPatientData(pRes.data.data);
+      if (aRes.data.success && aRes.data.data.length > 0) {
+        const latest = aRes.data.data[0];
+        setAnalysisId(latest.id);
+        const data = latest.data;
+        const newMetrics = {};
+        if (data.volumetricAnalysis?.tumorVolume) newMetrics.volume = data.volumetricAnalysis.tumorVolume;
+        if (data.volumetricAnalysis?.edemaVolume) newMetrics.edema = data.volumetricAnalysis.edemaVolume;
+        if (data.volumetricAnalysis?.necrosisVolume) newMetrics.necrosis = data.volumetricAnalysis.necrosisVolume;
+        if (data.volumetricAnalysis?.enhancingVolume) newMetrics.enhancing = data.volumetricAnalysis.enhancingVolume;
+        if (data.tumorLocation) newMetrics.location = data.tumorLocation;
+        if (data.shapeFeatures?.sphericity) newMetrics.sphericity = data.shapeFeatures.sphericity;
+        setAnalysisMetrics(prev => ({ ...prev, ...newMetrics }));
+      }
+    } catch (err) { console.error("Error fetching data:", err); }
   };
 
   return (
@@ -277,7 +282,7 @@ const Tumor3DPage = () => {
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', gap: 2 }}>
-           <Button variant="outlined" startIcon={<DownloadIcon />} sx={{ color: colors.muted, borderColor: 'rgba(255,255,255,0.1)' }}>EXPORT MESH (.GLB)</Button>
+          <Button variant="outlined" startIcon={<DownloadIcon />} sx={{ color: colors.muted, borderColor: 'rgba(255,255,255,0.1)' }}>EXPORT MESH (.GLB)</Button>
         </Box>
       </Box>
 
@@ -288,53 +293,53 @@ const Tumor3DPage = () => {
               <LayersIcon sx={{ color: colors.teal }} />
               <Typography variant="subtitle2" sx={{ fontFamily: '"Rajdhani"', fontWeight: 700, color: '#fff', letterSpacing: '1px' }}>DISPLAY LAYERS</Typography>
             </Box>
-            <ControlToggle label="Show Tumor" active={layers.tumor} onToggle={() => toggleLayer('tumor')} />
-            <ControlToggle label="Show Edema" active={layers.edema} onToggle={() => toggleLayer('edema')} />
-                                                <ControlToggle label="Show Brain" active={layers.brain} onToggle={() => toggleLayer('brain')} />
-                                                
-                                                <Divider sx={{ my: 2, bgcolor: 'rgba(255,255,255,0.1)' }} />
-                                                
-                                                <ControlToggle 
-                                                    label="Realistic Rendering" 
-                                                    active={realisticView} 
-                                                    onToggle={() => {
-                                                        const nextMode = !realisticView;
-                                                        setRealisticView(nextMode);
-                                                        if (nextMode) {
-                                                            // Force all layers ON when switching to Realistic
-                                                            setLayers({ tumor: true, edema: true, brain: true });
-                                                        }
-                                                    }} 
-                                                />
-                                              </Box>
+            <ControlToggle label="Show Tumor" active={layers.tumor} onToggle={() => toggleLayer('tumor')} disabled={realisticView} />
+            <ControlToggle label="Show Edema" active={layers.edema} onToggle={() => toggleLayer('edema')} disabled={realisticView} />
+            <ControlToggle label="Show Brain" active={layers.brain} onToggle={() => toggleLayer('brain')} disabled={realisticView} />
+
+            <Divider sx={{ my: 2, bgcolor: 'rgba(255,255,255,0.1)' }} />
+
+            <ControlToggle
+              label="Realistic Rendering"
+              active={realisticView}
+              onToggle={() => {
+                const nextMode = !realisticView;
+                setRealisticView(nextMode);
+                if (nextMode) {
+                  // Force all layers ON when switching to Realistic
+                  setLayers({ tumor: true, edema: true, brain: true });
+                }
+              }}
+            />
+          </Box>
           <Box className="glass-panel" sx={{ flex: 1 }}>
-             <Typography variant="subtitle2" sx={{ fontFamily: '"Rajdhani"', fontWeight: 700, color: '#fff', mb: 2 }}>ANATOMICAL STRUCTURES</Typography>
-              {['Frontal Lobe', 'Temporal Lobe', 'Parietal Lobe', 'Motor Cortex', 'Tumor Mass', 'Vascular Bundle'].map(item => (
-                <Chip key={item} label={item} sx={{ m: 0.5, bgcolor: 'rgba(255,255,255,0.05)', color: colors.muted, border: '1px solid rgba(255,255,255,0.1)', fontFamily: '"Space Grotesk"', fontSize: '0.7rem' }} />
-              ))}
+            <Typography variant="subtitle2" sx={{ fontFamily: '"Rajdhani"', fontWeight: 700, color: '#fff', mb: 2 }}>ANATOMICAL STRUCTURES</Typography>
+            {['Frontal Lobe', 'Temporal Lobe', 'Parietal Lobe', 'Motor Cortex', 'Tumor Mass', 'Vascular Bundle'].map(item => (
+              <Chip key={item} label={item} sx={{ m: 0.5, bgcolor: 'rgba(255,255,255,0.05)', color: colors.muted, border: '1px solid rgba(255,255,255,0.1)', fontFamily: '"Space Grotesk"', fontSize: '0.7rem' }} />
+            ))}
           </Box>
         </Box>
 
-        <ThreeDViewport 
-            volume={analysisMetrics.volume} location={analysisMetrics.location} analysisId={analysisId} 
-            layers={layers} brainOpacity={brainOpacity} setBrainOpacity={setBrainOpacity} realisticView={realisticView}
+        <ThreeDViewport
+          volume={analysisMetrics.volume} location={analysisMetrics.location} analysisId={analysisId}
+          layers={layers} brainOpacity={brainOpacity} setBrainOpacity={setBrainOpacity} realisticView={realisticView}
         />
 
         <Box sx={{ width: '300px', display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Box className="glass-panel">
-             <Typography variant="overline" sx={{ color: colors.cyan, letterSpacing: '2px', fontWeight: 700, display: 'block', mb: 2 }}>VOLUMETRIC DATA</Typography>
-             {analysisMetrics.volume && <MetricBox label="Tumor Volume" value={analysisMetrics.volume} unit="cm³" highlight />}
-             {analysisMetrics.edema && <MetricBox label="Edema Volume" value={analysisMetrics.edema} unit="cm³" highlight />}
-             {analysisMetrics.enhancing && <MetricBox label="Active Core" value={analysisMetrics.enhancing} unit="cm³" highlight />}
-             {analysisMetrics.necrosis && <MetricBox label="Necrosis" value={analysisMetrics.necrosis} unit="cm³" highlight />}
-             {analysisMetrics.sphericity && <MetricBox label="Sphericity Index" value={analysisMetrics.sphericity} highlight />}
+            <Typography variant="overline" sx={{ color: colors.cyan, letterSpacing: '2px', fontWeight: 700, display: 'block', mb: 2 }}>VOLUMETRIC DATA</Typography>
+            {analysisMetrics.volume && <MetricBox label="Tumor Volume" value={analysisMetrics.volume} unit="cm³" highlight />}
+            {analysisMetrics.edema && <MetricBox label="Edema Volume" value={analysisMetrics.edema} unit="cm³" highlight />}
+            {analysisMetrics.enhancing && <MetricBox label="Active Core" value={analysisMetrics.enhancing} unit="cm³" highlight />}
+            {analysisMetrics.necrosis && <MetricBox label="Necrosis" value={analysisMetrics.necrosis} unit="cm³" highlight />}
+            {analysisMetrics.sphericity && <MetricBox label="Sphericity Index" value={analysisMetrics.sphericity} highlight />}
           </Box>
         </Box>
       </Box>
 
       <Box sx={{ p: 2, borderTop: `1px solid rgba(255,255,255,0.05)`, display: 'flex', justifyContent: 'space-between', bgcolor: colors.bg }}>
         <Button onClick={() => navigate(-1)} startIcon={<ArrowBackIcon />} sx={{ color: colors.muted, fontFamily: '"Space Grotesk"', '&:hover': { color: '#fff' } }}>Return to Analysis</Button>
-        <Button onClick={() => navigate(`/treatment-plan?patientId=${new URLSearchParams(location.search).get('patientId')}`)} endIcon={<ArrowForwardIcon />} variant="contained" sx={{ bgcolor: colors.teal, color: '#fff', fontFamily: '"Rajdhani"', fontWeight: 700, px: 4, '&:hover': { bgcolor: colors.cyan, color: '#000' } }}>VIEW TREATMENT PATHWAY</Button>
+        <Button onClick={() => navigate(`/genomic-analysis?patientId=${new URLSearchParams(location.search).get('patientId')}`)} endIcon={<ArrowForwardIcon />} variant="contained" sx={{ bgcolor: colors.teal, color: '#fff', fontFamily: '"Rajdhani"', fontWeight: 700, px: 4, '&:hover': { bgcolor: colors.cyan, color: '#000' } }}>PROCEED TO GENOMICS</Button>
       </Box>
     </Box>
   );

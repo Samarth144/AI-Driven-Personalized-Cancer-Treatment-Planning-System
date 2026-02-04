@@ -1,6 +1,27 @@
-const { PDFParse } = require('pdf-parse');
+const pdf = require('pdf-parse');
 const fs = require('fs');
 const axios = require('axios');
+const path = require('path');
+
+const uploadMRI = async (req, res) => {
+  if (!req.files || Object.keys(req.files).length === 0) {
+    return res.status(400).json({ message: 'No files uploaded.' });
+  }
+
+  const uploadedFiles = {};
+  
+  // Iterate through the uploaded fields
+  Object.keys(req.files).forEach(key => {
+      const file = req.files[key][0];
+      const relativePath = path.relative(path.join(__dirname, '..'), file.path);
+      uploadedFiles[key] = relativePath.replace(/\\/g, '/'); // Normalize path
+  });
+
+  res.status(200).json({
+      message: 'MRI scans uploaded successfully.',
+      files: uploadedFiles
+  });
+};
 
 const uploadHistopathologyReport = async (req, res) => {
   if (!req.file) {
@@ -11,8 +32,7 @@ const uploadHistopathologyReport = async (req, res) => {
 
   try {
     const dataBuffer = fs.readFileSync(filePath);
-    const parser = new PDFParse({ data: dataBuffer });
-    const data = await parser.getText();
+    const data = await pdf(dataBuffer);
     const extractedText = data.text;
 
     // Log the extracted text for debugging
@@ -32,19 +52,16 @@ const uploadHistopathologyReport = async (req, res) => {
   } catch (error) {
     console.error('Error processing PDF or contacting AI engine:', error.message);
     if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
       console.error('AI Engine Response:', error.response.data);
       return res.status(500).json({ message: 'Error from AI engine.', details: error.response.data });
     } else if (error.request) {
-      // The request was made but no response was received
       return res.status(500).json({ message: 'AI engine did not respond.' });
     }
-    // Something happened in setting up the request that triggered an Error
     res.status(500).json({ message: 'Error processing PDF file.' });
   }
 };
 
 module.exports = {
   uploadHistopathologyReport,
+  uploadMRI
 };

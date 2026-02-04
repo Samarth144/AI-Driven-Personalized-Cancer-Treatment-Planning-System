@@ -57,13 +57,6 @@ const featuresData = [
   },
   {
     id: "03",
-    title: "Explainability Dashboard",
-    subtitle: "SHAP Values · Feature Importance",
-    desc: "SHAP-based feature importance graphs showing how inputs like Resection Extent or Cardiac Issues influenced the specific treatment choice.",
-    img: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80",
-  },
-  {
-    id: "04",
     title: "Blockchain Audit Ledger",
     subtitle: "Immutable Logs · Polygon Network",
     desc: "Immutable, tamper-proof logs of all data access and model versions on the Polygon network for regulatory compliance.",
@@ -161,7 +154,7 @@ function Home() {
 
               <div className="role-card">
                 <h3>🔬 Researcher</h3>
-                <p>Explore AI models, explainability tools, and audit trails</p>
+                <p>Explore AI models, datasets, and audit trails</p>
               </div>
             </div>
           </div>

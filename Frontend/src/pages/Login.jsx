@@ -1,195 +1,194 @@
 import React, { useState } from 'react';
+import { Box, Typography, Button, TextField, InputAdornment, IconButton, Link } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Box, Typography, TextField, Button, InputAdornment, IconButton, Tooltip 
-} from '@mui/material';
-import { motion, AnimatePresence } from 'framer-motion';
-import FingerprintIcon from '@mui/icons-material/Fingerprint';
-import AlternateEmailIcon from '@mui/icons-material/AlternateEmail';
+import { motion } from 'framer-motion';
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
-import HubIcon from '@mui/icons-material/Hub';
-import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import FingerprintIcon from '@mui/icons-material/Fingerprint';
+import BoltIcon from '@mui/icons-material/Bolt';
 import './Login.css';
 
-const AuthPortal = () => {
+// --- CUSTOM INPUT COMPONENT ---
+const TechInput = ({ label, type = "text", icon, endAdornment, placeholder, autoComplete, value, onChange }) => {
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <Box className="tech-input-group">
+      <Box className="tech-label-row">
+        <Typography variant="caption" className="tech-label">
+          {label}
+        </Typography>
+        <Typography variant="caption" className={`tech-status ${focused ? 'active' : ''}`}>
+          {focused ? 'INPUT_ACTIVE' : 'READY'}
+        </Typography>
+      </Box>
+
+      <Box className="input-wrapper">
+        <TextField
+          fullWidth
+          type={type}
+          variant="standard"
+          placeholder={focused ? '' : placeholder}
+          value={value}
+          onChange={onChange}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          className={`tech-field ${focused ? 'tech-field-active' : ''}`}
+          inputProps={{
+            autoComplete: autoComplete
+          }}
+          InputProps={{
+            disableUnderline: true,
+            className: "tech-field-base",
+            startAdornment: (
+              <InputAdornment position="start">
+                {React.cloneElement(icon, { sx: { color: focused ? '#00F0FF' : '#64748B', transition: 'color 0.3s' } })}
+              </InputAdornment>
+            ),
+            endAdornment: endAdornment,
+            style: { 
+                border: `1px solid ${focused ? '#00F0FF' : 'rgba(255,255,255,0.1)'}`,
+                padding: '12px 16px',
+                borderRadius: '4px',
+                backgroundColor: '#0B1221',
+                color: '#fff'
+            }
+          }}
+          sx={{
+            "& .MuiInputBase-input::placeholder": {
+              color: "rgba(255, 255, 255, 0.2)",
+              opacity: 1,
+              fontFamily: '"Space Grotesk"',
+              fontSize: '0.9rem'
+            },
+            "& .MuiInputBase-input": {
+              color: "#fff !important",
+              backgroundColor: "transparent !important",
+              WebkitTextFillColor: "#fff !important",
+            },
+            // Fix for Autocomplete background
+            "& input:-webkit-autofill": {
+              WebkitBoxShadow: "0 0 0 100px #0B1221 inset !important",
+              WebkitTextFillColor: "#fff !important",
+            }
+          }}
+        />
+        
+        {/* Animated Scan Line at Bottom */}
+        <Box className="scan-line-container">
+           <motion.div 
+             className="scan-line"
+             initial={{ x: '-100%' }}
+             animate={focused ? { x: '100%' } : { x: '-100%' }}
+             transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+           />
+        </Box>
+      </Box>
+    </Box>
+  );
+};
+
+const LoginPage = () => {
   const navigate = useNavigate();
-  const [isLogin, setIsLogin] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    role: 'oncologist'
-  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e) => {
+  const handleLogin = (e) => {
     e.preventDefault();
-    setLoading(true);
-    
-    const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-    const payload = isLogin 
-      ? { email: formData.email, password: formData.password }
-      : formData;
-
-    try {
-      const response = await fetch(`http://localhost:8000${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        // Store token and user data
-        localStorage.setItem('token', result.data.token);
-        localStorage.setItem('user', JSON.stringify(result.data));
-        navigate('/dashboard');
-      } else {
-        alert(result.message || 'Authentication Failed');
-      }
-    } catch (error) {
-      console.error('Auth Error:', error);
-      alert('Could not connect to the Security Server.');
-    } finally {
-      setLoading(false);
-    }
+    // For now, simulate login and navigate to dashboard
+    console.log('Login attempt:', { email, password });
+    navigate('/dashboard');
   };
 
   return (
-    <Box className="auth-portal-container">
-      <div className="auth-background-grid"></div>
+    <Box className="login-root">
       
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }} 
-        animate={{ opacity: 1, y: 0 }}
-        className="auth-terminal-wrapper"
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        style={{ width: '100%', display: 'flex', justifyContent: 'center' }}
       >
-        <div className="auth-terminal">
-          <div className="terminal-header">
-            <div className="system-status">
-              <div className="status-blinker"></div>
-              <Typography variant="caption">SYSTEM: RESONANCE // SECURITY_LVL: 4</Typography>
+        <Box className="login-card">
+
+          {/* --- DECORATIVE CORNER BRACKETS --- */}
+          <div className="corner-bracket corner-tl" />
+          <div className="corner-bracket corner-tr" />
+          <div className="corner-bracket corner-bl" />
+          <div className="corner-bracket corner-br" />
+
+          {/* --- HEADER --- */}
+          <Box className="login-header">
+            <div className="security-badge">
+               <FingerprintIcon sx={{ fontSize: 16, color: '#00F0FF' }} />
+               <span className="security-text">
+                 SECURE CLINICAL PORTAL
+               </span>
             </div>
-            <Typography variant="h4" className="terminal-title">
-              {isLogin ? 'NEURAL LINK' : 'PERSONNEL ONBOARDING'}
+            
+            <Typography variant="h4" className="system-title">
+              RESONANCE
             </Typography>
-            <Typography variant="caption" className="terminal-subtitle">
-              {isLogin ? 'Establish secure connection to Oncology Command' : 'Initialize new medical personnel record'}
+            <Typography variant="body2" className="system-subtitle">
+              Sign in to your account
             </Typography>
-          </div>
+          </Box>
 
-          <form onSubmit={handleSubmit} className="auth-form">
-            <AnimatePresence mode="wait">
-              {!isLogin && (
-                <motion.div 
-                  key="name-field"
-                  initial={{ opacity: 0, height: 0 }} 
-                  animate={{ opacity: 1, height: 'auto' }} 
-                  exit={{ opacity: 0, height: 0 }}
-                >
-                  <TextField
-                    fullWidth
-                    label="PERSONNEL NAME"
-                    name="name"
-                    className="tech-input auth-input"
-                    onChange={handleChange}
-                    required={!isLogin}
-                    InputProps={{
-                      startAdornment: <InputAdornment position="start"><PersonOutlineIcon /></InputAdornment>,
-                    }}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <TextField
-              fullWidth
-              label="ACCESS IDENTIFIER (EMAIL)"
-              name="email"
-              type="email"
-              className="tech-input auth-input"
-              onChange={handleChange}
-              required
-              InputProps={{
-                startAdornment: <InputAdornment position="start"><AlternateEmailIcon /></InputAdornment>,
-              }}
+          {/* --- FORM --- */}
+          <Box component="form" onSubmit={handleLogin}>
+            <TechInput 
+              label="Email Address" 
+              icon={<EmailOutlinedIcon />} 
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            
+            <TechInput 
+              label="Password" 
+              type={showPassword ? "text" : "password"} 
+              icon={<LockOutlinedIcon />}
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              endAdornment={
+                <InputAdornment position="end">
+                  <IconButton onClick={() => setShowPassword(!showPassword)} sx={{ color: '#64748B' }}>
+                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              }
             />
 
-            <TextField
+            {/* --- ACTION BUTTON --- */}
+            <Button
               fullWidth
-              label="SECURITY KEY (PASSWORD)"
-              name="password"
-              type="password"
-              className="tech-input auth-input"
-              onChange={handleChange}
-              required
-              InputProps={{
-                startAdornment: <InputAdornment position="start"><LockOutlinedIcon /></InputAdornment>,
-              }}
-            />
-
-            <AnimatePresence mode="wait">
-              {!isLogin && (
-                <motion.div 
-                  key="role-field"
-                  initial={{ opacity: 0, height: 0 }} 
-                  animate={{ opacity: 1, height: 'auto' }} 
-                  exit={{ opacity: 0, height: 0 }}
-                >
-                  <TextField
-                    select
-                    fullWidth
-                    label="ASSIGNED ROLE"
-                    name="role"
-                    className="tech-input auth-input"
-                    value={formData.role}
-                    onChange={handleChange}
-                    SelectProps={{ native: true }}
-                    InputProps={{
-                      startAdornment: <InputAdornment position="start"><HubIcon /></InputAdornment>,
-                    }}
-                  >
-                    <option value="oncologist">ONCOLOGIST</option>
-                    <option value="researcher">RESEARCHER</option>
-                    <option value="admin">SYSTEM ADMIN</option>
-                  </TextField>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <Button 
-              type="submit" 
-              variant="contained" 
-              fullWidth 
-              className="auth-launch-btn"
-              disabled={loading}
-              startIcon={isLogin ? <FingerprintIcon /> : <AssignmentIndIcon />}
+              variant="contained"
+              size="large"
+              type="submit"
+              className="btn-connect"
             >
-              {loading ? 'INITIALIZING...' : (isLogin ? 'AUTHORIZE ACCESS' : 'CREATE PROTOCOL')}
+              <div className="btn-connect-content">
+                <BoltIcon /> Sign In
+              </div>
             </Button>
-          </form>
+            
+          </Box>
 
-          <div className="auth-footer">
-            <Typography variant="caption" className="toggle-text">
-              {isLogin ? "No personnel record found?" : "Existing operative detected?"}
-            </Typography>
-            <Button 
-              className="auth-toggle-btn" 
-              onClick={() => setIsLogin(!isLogin)}
-            >
-              {isLogin ? 'INITIALIZE ONBOARDING' : 'BYPASS TO NEURAL LINK'}
-            </Button>
-          </div>
-        </div>
+          {/* --- FOOTER --- */}
+          <Box className="login-footer">
+            <Link onClick={() => navigate('/register')} className="access-link" sx={{ cursor: 'pointer' }}>
+              New user? <span className="link-highlight">Create an account</span>
+            </Link>
+          </Box>
+
+        </Box>
       </motion.div>
     </Box>
   );
 };
 
-export default AuthPortal;
+export default LoginPage;

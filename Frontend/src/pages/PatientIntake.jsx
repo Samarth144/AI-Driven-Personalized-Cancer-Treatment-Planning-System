@@ -301,14 +301,73 @@ const PatientIntake = () => {
             return;
         }
 
-        // Save Patient Data
-        const response = await axios.post('http://localhost:8000/api/patients', formData, {
+        let reportPath = null;
+        let mriPaths = {};
+
+        // 1. Upload Pathology Report if selected
+        if (formData.pathologyFile) {
+            const reportData = new FormData();
+            reportData.append('histopathology_pdf', formData.pathologyFile);
+            
+            try {
+                const uploadRes = await axios.post('http://localhost:8000/api/uploads/histopathology', reportData, {
+                    headers: { 
+                        'Content-Type': 'multipart/form-data',
+                        Authorization: `Bearer ${token}` 
+                    }
+                });
+                if (uploadRes.data.filename) {
+                    reportPath = `uploads/reports/${uploadRes.data.filename}`;
+                }
+            } catch (uploadErr) {
+                console.error("Report upload failed:", uploadErr);
+                alert("Failed to upload pathology report. Proceeding without it.");
+            }
+        }
+
+        // 2. Upload MRI Files if present
+        const mriFiles = Object.keys(uploadedFiles).filter(key => key.startsWith('mri_'));
+        if (mriFiles.length > 0) {
+            const mriData = new FormData();
+            // Pass MRN to create a specific folder
+            if (formData.mrn) {
+                mriData.append('mrn', formData.mrn);
+            }
+            
+            // The key in uploadedFiles is like 'mri_T1', but the backend expects 't1', 't2', etc.
+            // We need to map 'mri_T1' -> 't1', 'mri_T1ce' -> 't1ce', etc.
+            mriFiles.forEach(key => {
+                const backendField = key.replace('mri_', '').toLowerCase();
+                mriData.append(backendField, uploadedFiles[key]);
+            });
+
+            try {
+                const mriUploadRes = await axios.post('http://localhost:8000/api/uploads/mri', mriData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+                
+                if (mriUploadRes.data.files) {
+                    mriPaths = mriUploadRes.data.files;
+                }
+            } catch (mriErr) {
+                console.error("MRI upload failed:", mriErr);
+                alert("Failed to upload MRI scans. Proceeding without them.");
+            }
+        }
+
+        // 3. Save Patient Data
+        const payload = { ...formData, pathologyReportPath: reportPath, mriPaths };
+        delete payload.pathologyFile; // Remove file object
+
+        const response = await axios.post('http://localhost:8000/api/patients', payload, {
             headers: { Authorization: `Bearer ${token}` }
         });
 
         if (response.data.success) {
             const patientId = response.data.data.id;
-            // Pass patientId to MRI Analysis via URL
             navigate(`/mri-analysis?patientId=${patientId}`);
         } else {
             throw new Error(response.data.message || 'Failed to save patient record');
@@ -449,18 +508,34 @@ const PatientIntake = () => {
                   </Box>
 
                   <Grid container spacing={4} className="mri-grid">
-                    {(IMAGING_PROTOCOLS[formData.cancerType] || IMAGING_PROTOCOLS.Brain).map((protocol, index) => (
-                      <Grid item xs={12} className="mri-grid-item" key={protocol.id}>
-                        <UploadZone 
-                          type={protocol.id.replace('_', ' ')} 
-                          label={protocol.label} 
-                          file={uploadedFiles[`mri_${protocol.id}`]} 
-                          onUpload={(_, file) => handleMRIUpload(protocol.id, file)} 
-                          onDelete={() => handleMRIDelete(protocol.id)} 
-                          index={index} 
-                        />
+                    {formData.cancerType === 'Brain' ? (
+                      (IMAGING_PROTOCOLS[formData.cancerType] || IMAGING_PROTOCOLS.Brain).map((protocol, index) => (
+                        <Grid item xs={12} className="mri-grid-item" key={protocol.id}>
+                          <UploadZone 
+                            type={protocol.id.replace('_', ' ')} 
+                            label={protocol.label} 
+                            file={uploadedFiles[`mri_${protocol.id}`]} 
+                            onUpload={(_, file) => handleMRIUpload(protocol.id, file)} 
+                            onDelete={() => handleMRIDelete(protocol.id)} 
+                            index={index} 
+                          />
+                        </Grid>
+                      ))
+                    ) : (
+                      <Grid item xs={12}>
+                        <Box sx={{ 
+                          textAlign: 'center', py: 10, border: '2px dashed rgba(255,255,255,0.1)', 
+                          borderRadius: '20px', background: 'rgba(255,255,255,0.02)' 
+                        }}>
+                          <FileUploadOutlinedIcon sx={{ fontSize: 60, color: '#64748B', mb: 2 }} />
+                          <Typography variant="h5" sx={{ color: '#fff', mb: 1 }}>{formData.cancerType.toUpperCase()} MRI SEGMENTATION</Typography>
+                          <Typography variant="body1" sx={{ color: '#F59E0B', fontWeight: 600 }}>FEATURE COMING SOON</Typography>
+                          <Typography variant="caption" sx={{ color: '#64748B', display: 'block', mt: 1 }}>
+                            Our AI engineers are currently training specialized models for this cancer type.
+                          </Typography>
+                        </Box>
                       </Grid>
-                    ))}
+                    )}
                   </Grid>
                   <div className="terminal-footer">
                     <Button variant="text" className="tech-btn-text" onClick={() => setCurrentStep(1)}>BACK</Button>
@@ -649,7 +724,7 @@ const PatientIntake = () => {
                   </Grid>
 
                   <div className="terminal-footer-final">
-                    {Object.keys(uploadedFiles).filter(k => k.startsWith('mri_')).length === 0 && (
+                    {formData.cancerType === 'Brain' && Object.keys(uploadedFiles).filter(k => k.startsWith('mri_')).length === 0 && (
                       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                         <Typography className="critical-error-text">
                           [!] CRITICAL ERROR: INSUFFICIENT IMAGING DATA. ANALYSIS LOCKED.
@@ -659,11 +734,11 @@ const PatientIntake = () => {
                     <Button
                       variant="contained"
                       className="tech-btn-launch"
-                      disabled={Object.keys(uploadedFiles).filter(k => k.startsWith('mri_')).length === 0 || loading}
+                      disabled={(formData.cancerType === 'Brain' && Object.keys(uploadedFiles).filter(k => k.startsWith('mri_')).length === 0) || loading}
                       endIcon={<PlayArrowIcon />}
                       onClick={handleCompleteIntake}
                     >
-                      {loading ? 'SAVING DATA...' : (Object.keys(uploadedFiles).filter(k => k.startsWith('mri_')).length === 0 ? 'AWAITING DATA...' : 'INITIALIZE TREATMENT ENGINE')}
+                      {loading ? 'SAVING DATA...' : (formData.cancerType === 'Brain' && Object.keys(uploadedFiles).filter(k => k.startsWith('mri_')).length === 0 ? 'AWAITING DATA...' : 'INITIALIZE TREATMENT ENGINE')}
                     </Button>
                   </div>
                 </div>

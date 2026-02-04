@@ -1,6 +1,114 @@
 const Patient = require('../models/Patient');
 const User = require('../models/User');
+const fs = require('fs');
+const path = require('path');
+const pdfParser = require('pdf-parse');
+const axios = require('axios');
 
+// @desc    Analyze pathology report for a patient
+// @route   POST /api/patients/:id/analyze-pathology
+// @access  Private
+exports.analyzePathology = async (req, res) => {
+    try {
+        const patient = await Patient.findByPk(req.params.id);
+
+        if (!patient) {
+            console.error(`Patient not found: ${req.params.id}`);
+            return res.status(404).json({ message: 'Patient not found' });
+        }
+
+        console.log(`Analyzing pathology for patient ${req.params.id}`);
+        console.log(`Stored Report Path: '${patient.pathologyReportPath}'`);
+
+        if (!patient.pathologyReportPath) {
+            console.error("No pathology report path in DB");
+            return res.status(400).json({ message: 'No pathology report linked to this patient. Please upload one via the Intake Form.' });
+        }
+
+        // Construct absolute path
+        const absolutePath = path.resolve(__dirname, '..', patient.pathologyReportPath);
+        console.log(`Absolute File Path: ${absolutePath}`);
+
+        if (!fs.existsSync(absolutePath)) {
+             console.error("File does not exist on disk at:", absolutePath);
+             const dir = path.dirname(absolutePath);
+             if (fs.existsSync(dir)) {
+                 console.log(`Contents of ${dir}:`, fs.readdirSync(dir));
+             } else {
+                 console.log(`Directory ${dir} does not exist.`);
+             }
+             return res.status(404).json({ message: 'Report file not found on server. It may have been deleted.' });
+        }
+
+        let dataBuffer;
+        try {
+            dataBuffer = fs.readFileSync(absolutePath);
+            console.log("File read successfully.");
+        } catch (readErr) {
+            console.error("File read error:", readErr);
+            return res.status(500).json({ message: "Failed to read file from disk." });
+        }
+        
+        let extractedText = "";
+        try {
+            console.log("pdfParser keys:", Object.keys(pdfParser)); 
+            
+            // Temporary fix attempt: Check if it behaves like version 1.1.1 or 2.x
+            // If it's the class-based one:
+            if (pdfParser.PDFParse) {
+                 const parser = new pdfParser.PDFParse({ data: dataBuffer });
+                 const data = await parser.getText();
+                 extractedText = data.text;
+            } else if (typeof pdfParser === 'function') {
+                 const data = await pdfParser(dataBuffer);
+                 extractedText = data.text;
+            } else {
+                 // Try default if it's an object with default
+                 const func = pdfParser.default || pdfParser;
+                 if (typeof func === 'function') {
+                     const data = await func(dataBuffer);
+                     extractedText = data.text;
+                 } else {
+                     throw new Error(`Unknown pdf-parse structure: ${JSON.stringify(pdfParser)}`);
+                 }
+            }
+
+            console.log(`PDF Parsed. Text length: ${extractedText.length} chars`);
+        } catch (pdfErr) {
+            console.error("PDF Parse error:", pdfErr);
+            return res.status(500).json({ message: "Failed to parse PDF content.", error: pdfErr.message });
+        }
+
+        // Send to AI Engine
+        console.log("Sending to AI Engine...");
+        const aiResponse = await axios.post('http://localhost:5000/process_report_text', {
+            text: extractedText,
+        });
+        console.log("AI Engine responded successfully.");
+
+        // Save extracted data and analysis to DB
+        await patient.update({
+            medicalHistory: extractedText, // Save raw extracted text
+            pathologyAnalysis: aiResponse.data // Save structured AI analysis
+        });
+
+        res.json({
+            success: true,
+            ...aiResponse.data
+        });
+
+    } catch (error) {
+        console.error("Error analyzing pathology:", error.message);
+        if (error.response) {
+             console.error("AI Engine Response Error:", error.response.data);
+             return res.status(500).json({ message: 'AI Engine Error', details: error.response.data });
+        }
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
 
 // @desc    Get all patients
 // @route   GET /api/patients
@@ -75,12 +183,11 @@ exports.getPatient = async (req, res) => {
 // @access  Private
 exports.createPatient = async (req, res) => {
     try {
-        const { 
+        const {
             name, mrn, dob, gender, contact, diagnosisDate, cancerType,
             idh1, mgmt, er, pr, her2, brca, pdl1, egfr, alk, ros1, kras, afp,
-            kps, ecog, symptoms, comorbidities, pathologyReport
+            kps, ecog, symptoms, comorbidities, pathologyReport, pathologyReportPath, mriPaths
         } = req.body;
-
         // 1. Split Name
         const nameParts = name ? name.split(' ') : ['Unknown', ''];
         const firstName = nameParts[0];
@@ -117,7 +224,9 @@ exports.createPatient = async (req, res) => {
             symptoms: symptomsArray,
             comorbidities: comorbiditiesArray,
             genomicProfile,
-            medicalHistory: pathologyReport, // Storing report text/link here for now
+            medicalHistory: pathologyReport, // Storing report text content here
+            pathologyReportPath, // Storing file path here
+            mriPaths,
             oncologistId: req.user.id
         };
 
@@ -153,7 +262,7 @@ exports.updatePatient = async (req, res) => {
         const { 
             name, mrn, dob, gender, contact, diagnosisDate, cancerType,
             idh1, mgmt, er, pr, her2, brca, pdl1, egfr, alk, ros1, kras, afp,
-            kps, ecog, symptoms, comorbidities, pathologyReport
+            kps, ecog, symptoms, comorbidities, pathologyReport, pathologyReportPath, mriPaths
         } = req.body;
 
         const updates = {};
@@ -162,8 +271,7 @@ exports.updatePatient = async (req, res) => {
         if (name) {
             const nameParts = name.split(' ');
             updates.firstName = nameParts[0];
-            updates.lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : patient.lastName; // Keep old last name if only first provided? Or empty. 
-            // Better logic: if only one word, assume first name.
+            updates.lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : patient.lastName; 
         }
 
         if (mrn) updates.mrn = mrn;
@@ -176,6 +284,10 @@ exports.updatePatient = async (req, res) => {
             updates.diagnosis = cancerType;
         }
         if (pathologyReport) updates.medicalHistory = pathologyReport;
+        if (pathologyReportPath) updates.pathologyReportPath = pathologyReportPath;
+        if (mriPaths) {
+            updates.mriPaths = { ...(patient.mriPaths || {}), ...mriPaths };
+        }
         
         // 2. Handle Arrays
         if (symptoms !== undefined) {

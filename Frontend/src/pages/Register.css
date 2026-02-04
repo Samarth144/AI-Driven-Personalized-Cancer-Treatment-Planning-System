@@ -1,0 +1,197 @@
+/* --- REGISTER PAGE THEME --- */
+:root {
+    --reg-bg: #0B1221;
+    --reg-glass: rgba(22, 32, 50, 0.8);
+    --reg-teal: #059789;
+    --reg-cyan: #00F0FF;
+    --reg-purple: #8B5CF6;
+    --reg-amber: #F59E0B;
+    --reg-text: #F8FAFC;
+    --reg-muted: #64748B;
+    --reg-border: rgba(5, 151, 137, 0.3);
+}
+
+.reg-root {
+    min-height: 100vh;
+    background-color: var(--reg-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background-image: radial-gradient(circle at 50% 50%, rgba(5,151,137,0.1) 0%, #0B1221 80%);
+}
+
+.reg-card {
+    width: 100%;
+    max-width: 550px;
+    background-color: var(--reg-glass);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 4px;
+    position: relative;
+    padding: 3rem;
+    border: 1px solid var(--reg-border);
+    box-shadow: 0 25px 50px rgba(0,0,0,0.6);
+}
+
+/* Tech Corners */
+.corner-bracket {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-color: var(--reg-cyan);
+    border-style: solid;
+    pointer-events: none;
+}
+
+.corner-tl { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+.corner-br { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+
+/* Header */
+.reg-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.reg-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    background-color: rgba(5, 151, 137, 0.15);
+    border: 1px solid var(--reg-teal);
+}
+
+.reg-badge-text {
+    font-family: "Rajdhani", sans-serif;
+    font-weight: 700;
+    color: var(--reg-teal);
+    letter-spacing: 1.5px;
+    font-size: 0.75rem;
+}
+
+.reg-title {
+    font-family: "Rajdhani", sans-serif;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 2px;
+}
+
+.reg-subtitle {
+    color: var(--reg-muted);
+    font-family: "Space Grotesk", sans-serif;
+    margin-top: 0.5rem;
+}
+
+/* Role Cards */
+.role-grid-container {
+    margin-bottom: 2rem;
+}
+
+.role-label {
+    color: var(--reg-muted);
+    font-family: "Space Grotesk", sans-serif;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 1rem;
+}
+
+.role-card-item {
+    cursor: pointer;
+    padding: 1rem;
+    border-radius: 4px;
+    text-align: center;
+    transition: all 0.3s;
+    background-color: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.role-card-item.selected-oncologist { border-color: var(--reg-cyan); background-color: rgba(0, 240, 255, 0.15); }
+.role-card-item.selected-researcher { border-color: var(--reg-purple); background-color: rgba(139, 92, 246, 0.15); }
+.role-card-item.selected-admin { border-color: var(--reg-amber); background-color: rgba(245, 158, 11, 0.15); }
+
+.role-card-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.role-icon {
+    margin-bottom: 0.5rem;
+}
+
+.role-icon svg {
+    font-size: 28px !important;
+}
+
+.role-card-text {
+    font-family: "Rajdhani", sans-serif;
+    font-weight: 700;
+    letter-spacing: 1px;
+    font-size: 0.75rem;
+}
+
+/* Inputs (Reusing logic from login for consistency) */
+.tech-input-group {
+    margin-bottom: 1.5rem;
+}
+
+.tech-label-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.tech-status {
+    font-family: "Rajdhani", sans-serif;
+    font-size: 0.65rem;
+    transition: color 0.3s;
+}
+
+.tech-status.active {
+    color: var(--reg-cyan);
+}
+
+/* Action Button */
+.btn-initialize {
+    background-color: var(--reg-teal) !important;
+    color: #fff !important;
+    font-family: "Rajdhani", sans-serif !important;
+    font-weight: 700 !important;
+    font-size: 1.1rem !important;
+    letter-spacing: 1px !important;
+    padding: 12px 0 !important;
+    border-radius: 2px !important;
+    transition: all 0.3s !important;
+}
+
+.btn-initialize:hover {
+    background-color: var(--reg-cyan) !important;
+    color: #0B1221 !important;
+    box-shadow: 0 0 30px rgba(0, 240, 255, 0.5);
+}
+
+/* Footer */
+.reg-footer {
+    margin-top: 2.5rem;
+    text-align: center;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.login-link {
+    color: var(--reg-muted) !important;
+    font-family: "Space Grotesk", sans-serif !important;
+    font-size: 0.9rem !important;
+    transition: color 0.2s;
+    text-decoration: none !important;
+}
+
+.login-link:hover {
+    color: #fff !important;
+}
+
+.highlight-cyan {
+    color: var(--reg-cyan);
+    font-weight: 600;
+}
