@@ -563,16 +563,20 @@ function OutcomePrediction() {
         {/* Evidence Section */}
         {evidence.length > 0 && (
           <div className="card-glass mb-xl">
-            <h3>Evidence from Literature</h3>
-            <p className="text-secondary mb-lg">Sources used for prediction</p>
-            <div className="evidence-grid">
-              {evidence.map((item, index) => (
-                <div key={index} className="evidence-card">
-                  <p className="evidence-text">{item.text}</p>
-                  <p className="evidence-source">{item.source} - Page {item.page}</p>
-                </div>
-              ))}
-            </div>
+            <details>
+              <summary style={{ cursor: 'pointer', color: 'white' }}>
+                <h3>Evidence from Literature</h3>
+                <p className="text-secondary mb-lg">Sources used for prediction (click to expand)</p>
+              </summary>
+              <div className="evidence-grid">
+                {evidence.map((item, index) => (
+                  <div key={index} className="evidence-card">
+                    <p className="evidence-text">{item.text}</p>
+                    <p className="evidence-source">{item.source} - Page {item.page}</p>
+                  </div>
+                ))}
+              </div>
+            </details>
           </div>
         )}
 
