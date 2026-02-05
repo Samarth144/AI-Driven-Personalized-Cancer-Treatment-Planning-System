@@ -1,8 +1,79 @@
 const TreatmentPlan = require('../models/TreatmentPlan');
 const Patient = require('../models/Patient');
 const User = require('../models/User');
+const axios = require('axios');
+const { formatEvidenceWithGemini } = require('../utils/geminiFormatter'); // Updated import
 
 const { generateMockAnalysis } = require('../utils/aiSimulator');
+
+// @desc    Generate and format a treatment plan using AI and Gemini
+// @route   POST /api/treatments/generate-formatted
+// @access  Private
+exports.generateFormattedPlan = async (req, res) => {
+    console.log('--- Initiating generateFormattedPlan ---');
+    console.log('Request Body:', JSON.stringify(req.body, null, 2));
+
+    try {
+        // Step 1: Call the Python AI engine to get the raw treatment plan and evidence.
+        console.log('Step 1: Calling Python AI engine at http://127.0.0.1:5000/recommend...');
+        const aiEngineResponse = await axios.post('http://127.0.0.1:5000/recommend', req.body);
+
+        const rawTreatmentData = aiEngineResponse.data;
+        console.log('Step 1a: Successfully received data from AI engine.');
+        // Log only a snippet of the data to avoid flooding the console
+        console.log('Raw Data Snippet:', JSON.stringify(rawTreatmentData).substring(0, 200));
+
+        // Extract the raw plan and evidence from the AI engine's response
+        const rawPlan = rawTreatmentData.plan || 'No specific plan provided by AI engine.';
+        const evidence = rawTreatmentData.evidence || [];
+
+        // Step 2: Format ONLY the evidence using the Gemini API formatter.
+        console.log('Step 2: Formatting evidence with Gemini...');
+        const formattedEvidence = await formatEvidenceWithGemini(evidence);
+        console.log('Step 2a: Successfully formatted evidence with Gemini.');
+
+        // Step 3: Send the raw plan and formatted evidence back to the frontend.
+        console.log('Step 3: Sending raw plan and formatted evidence to frontend.');
+        res.json({
+            success: true,
+            data: {
+                rawPlan: rawPlan,
+                formattedEvidence: formattedEvidence
+            }
+        });
+        console.log('--- generateFormattedPlan Completed Successfully ---');
+
+    } catch (error) {
+        console.error('--- ERROR in generateFormattedPlan ---');
+        console.error('Error object:', error);
+
+        // Distinguish between AI engine error and other errors
+        if (error.response) {
+            // Error from a downstream service (like AI engine)
+            console.error('Downstream service error status:', error.response.status);
+            console.error('Downstream service error data:', error.response.data);
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to get a valid response from the AI engine.',
+                error: error.response.data
+            });
+        } else if (error.request) {
+            // Request was made but no response received
+            console.error('The request was made, but no response was received from the AI engine.');
+            return res.status(500).json({
+                success: false,
+                message: 'The AI engine is not responding. Please ensure it is running and accessible at http://127.0.0.1:5000.'
+            });
+        }
+        // Other errors (e.g., Gemini API failure, data processing error)
+        console.error('A non-request error occurred:', error.message);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'An internal server error occurred during plan generation.'
+        });
+    }
+};
+
 
 // @desc    Get all treatment plans for a patient
 // @route   GET /api/treatments/patient/:patientId

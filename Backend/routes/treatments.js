@@ -5,12 +5,16 @@ const {
     getTreatment,
     createTreatment,
     updateTreatment,
-    approveTreatment
+    approveTreatment,
+    generateFormattedPlan
 } = require('../controllers/treatmentController');
 const { protect, authorize } = require('../middleware/auth');
 
 router.route('/')
     .post(protect, authorize('oncologist', 'admin'), createTreatment);
+
+router.route('/generate-formatted')
+    .post(generateFormattedPlan);
 
 router.route('/patient/:patientId')
     .get(protect, getPatientTreatments);

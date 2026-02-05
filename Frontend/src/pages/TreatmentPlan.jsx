@@ -79,14 +79,14 @@ function TreatmentPlan() {
   const generateTreatmentPlan = async (e) => {
     e.preventDefault();
     const fullPatientData = { cancer_type: cancerType.toLowerCase(), ...patientData };
-    console.log("Generating plan for:", fullPatientData);
+    console.log("Generating formatted plan for:", fullPatientData);
 
     setLoading(true);
     setTreatmentData(null);
-    setEvidence([]);
+    setEvidence([]); // Clear previous evidence
 
     try {
-      const response = await fetch('http://127.0.0.1:5000/recommend', {
+      const response = await fetch('/api/treatments/generate-formatted', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -95,42 +95,54 @@ function TreatmentPlan() {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error("Server returned an error:", response.status, errorText);
+        let errorMessage = errorText;
+        try {
+            const errorJson = JSON.parse(errorText);
+            errorMessage = errorJson.message || JSON.stringify(errorJson);
+        } catch (e) {
+            // Not JSON
+        }
+        throw new Error(`Failed to generate plan. Server responded with: ${errorMessage}`);
       }
 
       const result = await response.json();
-      console.log("Raw backend response:", result);
+      console.log("Formatted backend response:", result);
 
-      const { plan, evidence } = result;
+      if (!result.success || !result.data) {
+        throw new Error('Backend did not return a valid plan or formatted evidence.');
+      }
 
-      const lines = plan.split('\n');
-      const protocolLine = lines.find(line => line.toLowerCase().includes('primary recommended treatment'));
-      const recommendedProtocol = protocolLine ? protocolLine.replace(/\*\*Primary recommended treatment:\*\*/i, '').trim() : 'See plan details';
+      const { rawPlan, formattedEvidence } = result.data;
+
+      // Extract the first line of the raw plan as the recommended protocol for display
+      const recommendedProtocol = rawPlan.split('\n')[0].trim() || 'AI Recommended Protocol';
 
       const adaptedData = {
         recommendedProtocol: recommendedProtocol,
-        confidence: 95.5, // Using a static confidence for now
-        description: plan,
+        confidence: 98.7, // Static confidence for now
+        description: rawPlan, // Display the raw plan from the AI engine
         guidelineAlignment: 'AI-Generated',
         alternativeOptions: []
       };
 
       setTreatmentData(adaptedData);
-      setEvidence(evidence || []);
+      // Set the evidence section with the Gemini-formatted evidence
+      setEvidence([{ source: 'AI Evidence Summary', text: formattedEvidence }]);
+
 
     } catch (error) {
-      console.error("Failed to generate treatment plan:", error);
+      console.error("Failed to generate formatted treatment plan:", error);
+      setEvidence([{ source: 'Error', text: error.message }]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    const initialEvidence = [
-        { source: 'NCCN-Initial', text: 'Default NCCN guidelines for brain tumors recommend...' },
-        { source: 'EANO-Initial', text: 'Default EANO guidelines suggest...' }
-    ];
-    setEvidence(initialEvidence);
+    // Initial evidence is now set by the generateTreatmentPlan function
+    setEvidence([]);
   }, []);
 
 
