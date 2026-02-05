@@ -1,9 +1,58 @@
+const axios = require('axios');
+const { formatSideEffectsWithGemini } = require('../utils/geminiFormatter');
 const OutcomePrediction = require('../models/OutcomePrediction');
 const TreatmentPlan = require('../models/TreatmentPlan');
 const Patient = require('../models/Patient');
 const User = require('../models/User');
 
 const { generateMockAnalysis } = require('../utils/aiSimulator');
+
+// @desc    Generate and format outcomes using AI and Gemini
+// @route   POST /api/outcomes/predict-formatted
+// @access  Private
+exports.generateFormattedOutcomes = async (req, res) => {
+    try {
+        // Step 1: Call the Python AI engine to get the raw outcome predictions.
+        const aiEngineResponse = await axios.post('http://127.0.0.1:5000/predict_side_effects', req.body);
+        const rawOutcomeData = aiEngineResponse.data;
+
+        // Extract side effects and patient data for formatting
+        const { sideEffects, ...restOfOutcomeData } = rawOutcomeData;
+
+        // Step 2: Format the side effects using the Gemini API formatter.
+        const formattedSideEffects = await formatSideEffectsWithGemini(sideEffects, req.body);
+
+        // Step 3: Send the raw outcome data and the formatted side effects back to the frontend.
+        res.json({
+            success: true,
+            data: {
+                ...restOfOutcomeData,
+                sideEffects: sideEffects, // keep the raw data as well
+                formattedSideEffects: formattedSideEffects
+            }
+        });
+
+    } catch (error) {
+        console.error('--- ERROR in generateFormattedOutcomes ---');
+        if (error.response) {
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to get a valid response from the AI engine.',
+                error: error.response.data
+            });
+        } else if (error.request) {
+            return res.status(500).json({
+                success: false,
+                message: 'The AI engine is not responding. Please ensure it is running and accessible at http://127.0.0.1:5000.'
+            });
+        }
+        res.status(500).json({
+            success: false,
+            message: error.message || 'An internal server error occurred during outcome prediction.'
+        });
+    }
+};
+
 
 // @desc    Get all outcome predictions for a patient
 // @route   GET /api/outcomes/patient/:patientId
