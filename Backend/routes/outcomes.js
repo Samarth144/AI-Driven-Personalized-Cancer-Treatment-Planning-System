@@ -3,9 +3,13 @@ const router = express.Router();
 const {
     getPatientOutcomes,
     getOutcome,
-    createOutcome
+    createOutcome,
+    generateFormattedOutcomes
 } = require('../controllers/outcomeController');
 const { protect } = require('../middleware/auth');
+
+router.route('/predict-formatted')
+    .post(protect, generateFormattedOutcomes);
 
 router.route('/')
     .post(protect, createOutcome);

@@ -178,6 +178,7 @@ function OutcomePrediction() {
   const [loading, setLoading] = useState(false);
   const [outcomeData, setOutcomeData] = useState(null);
   const [evidence, setEvidence] = useState([]);
+  const [formattedSideEffects, setFormattedSideEffects] = useState('');
   const [formData, setFormData] = useState({ 
     name: '', dob: '', gender: '', mrn: '', contact: '', diagnosisDate: '', pathologyReport: '', pathologyFile: null,
     cancerType: 'Brain',
@@ -191,10 +192,13 @@ function OutcomePrediction() {
 
   const generatePredictions = async () => {
     setLoading(true);
+    setFormattedSideEffects('');
     try {
-      const response = await axios.post('http://localhost:5000/predict_side_effects', formData);
-      setOutcomeData(response.data);
-      setEvidence(response.data.evidence || []);
+      // Updated to call the new backend endpoint
+      const response = await axios.post('/api/outcomes/predict-formatted', formData);
+      setOutcomeData(response.data.data);
+      setEvidence(response.data.data.evidence || []);
+      setFormattedSideEffects(response.data.data.formattedSideEffects || '');
     } catch (error) {
       console.error('Error generating predictions:', error);
     } finally {
@@ -493,23 +497,29 @@ function OutcomePrediction() {
             {/* Side Effects Prediction */}
             <div className="card-glass mb-xl">
               <h3>Predicted Side Effects & Toxicity</h3>
-              <p className="text-secondary mb-lg">Probability of experiencing treatment-related adverse events</p>
+              <p className="text-secondary mb-lg">AI-generated summary of potential treatment-related adverse events.</p>
 
-              <div className="side-effects-grid">
-            {loading ? (
-                <div className="text-secondary">Calculating risks...</div>
-            ) : outcomeData && Object.entries(outcomeData.sideEffects).map(([name, risk]) => (
-                <div key={name} className="side-effect-card">
-                    <div className="flex justify-between items-center mb-sm">
-                        <strong>{name.replace(/([A-Z])/g, ' $1').trim()}</strong>
-                        <span className="badge badge-warning">{risk}%</span>
-                    </div>
-                    <div className="risk-meter">
-                        <div className="risk-fill" style={{ width: `${risk}%` }}></div>
-                    </div>
+              {loading ? (
+                  <div className="text-secondary">Calculating risks...</div>
+              ) : formattedSideEffects ? (
+                  <div className="evidence-section">
+                      <p className="text-secondary" style={{ whiteSpace: 'pre-wrap', fontSize: '1rem' }}>{formattedSideEffects}</p>
+                  </div>
+              ) : (
+                <div className="side-effects-grid">
+                    {outcomeData && Object.entries(outcomeData.sideEffects || {}).map(([name, risk]) => (
+                        <div key={name} className="side-effect-card">
+                            <div className="flex justify-between items-center mb-sm">
+                                <strong>{name.replace(/([A-Z])/g, ' $1').trim()}</strong>
+                                <span className="badge badge-warning">{risk}%</span>
+                            </div>
+                            <div className="risk-meter">
+                                <div className="risk-fill" style={{ width: `${risk}%` }}></div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
-            ))}
-          </div>
+              )}
             </div>
 
             {/* Risk Stratification */}
