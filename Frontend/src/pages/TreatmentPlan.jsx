@@ -67,6 +67,20 @@ function TreatmentPlan() {
     }
   };
 
+  const handleCancerTypeChange = (e) => {
+    const newCancerType = e.target.value;
+    setCancerType(newCancerType);
+    setPatientData(getInitialPatientData(newCancerType));
+  };
+
+  const handlePatientDataChange = (e) => {
+    const { name, value } = e.target;
+    setPatientData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
+
   const generateTreatmentPlan = async (e, overrideData = null) => {
     if (e) e.preventDefault();
     const fullPatientData = overrideData || { cancer_type: cancerType.toLowerCase(), ...patientData };
@@ -89,18 +103,14 @@ function TreatmentPlan() {
       }
 
       const result = await response.json();
-      const { plan, evidence } = result;
-
-      const lines = plan.split('\n');
-      const protocolLine = lines.find(line => line.toLowerCase().includes('primary recommended treatment'));
-      const recommendedProtocol = protocolLine ? protocolLine.replace(/\*\*Primary recommended treatment:\*\*/i, '').trim() : 'See plan details';
+      const { plan, evidence, confidence, protocols } = result;
 
       setTreatmentData({
-        recommendedProtocol: recommendedProtocol,
-        confidence: 95.5,
-        description: plan,
+        recommendedProtocol: plan.primary_treatment || 'See plan details',
+        confidence: confidence || 92.0,
+        planData: plan,
         guidelineAlignment: 'AI-Generated Evidence Base',
-        alternativeOptions: []
+        protocols: protocols || []
       });
       setEvidence(evidence || []);
 
@@ -127,23 +137,38 @@ function TreatmentPlan() {
                     const p = res.data.data;
                     const pathData = p.pathologyAnalysis?.extracted_data || {};
                     
-                    // FIXED TO BREAST ONLY
-                    const type = 'Breast';
+                    const type = p.cancerType || 'Breast';
                     setCancerType(type);
                     
-                    // 2. Initialize and Override
                     let newData = getInitialPatientData(type);
-                    if (pathData.stage) newData.stage = pathData.stage;
                     
-                    // Specific Breast Mapping
-                    if (pathData.ER) newData.ER = pathData.ER.toLowerCase();
-                    if (pathData.PR) newData.PR = pathData.PR.toLowerCase();
-                    if (pathData.HER2) newData.HER2 = pathData.HER2.toLowerCase();
-                    if (pathData.BRCA) newData.BRCA = pathData.BRCA.toLowerCase();
+                    if (pathData.stage) newData.stage = pathData.stage;
+                    if (pathData.age) newData.age = pathData.age;
+                    if (p.kps) newData.KPS = p.kps;
+
+                    if (type === 'Breast') {
+                        if (pathData.ER) newData.ER = pathData.ER.toLowerCase();
+                        if (pathData.PR) newData.PR = pathData.PR.toLowerCase();
+                        if (pathData.HER2) newData.HER2 = pathData.HER2.toLowerCase();
+                        if (pathData.BRCA) newData.BRCA = pathData.BRCA.toLowerCase();
+                        if (pathData.ki67) newData.Ki67 = pathData.ki67;
+                    } else if (type === 'Brain') {
+                        if (pathData.MGMT) newData.MGMT = pathData.MGMT.toLowerCase();
+                        if (pathData.IDH1) newData.IDH = pathData.IDH1.toLowerCase();
+                        if (pathData.resection) newData.Resection = pathData.resection;
+                        if (pathData.prior_radiation) newData.PriorRadiation = pathData.prior_radiation;
+                    } else if (type === 'Lung') {
+                        if (pathData.EGFR) newData.EGFR = pathData.EGFR.toLowerCase();
+                        if (pathData.ALK) newData.ALK = pathData.ALK.toLowerCase();
+                        if (pathData.PDL1) newData.PDL1 = pathData.PDL1;
+                        if (pathData.KRAS) newData.KRAS = pathData.KRAS;
+                    } else if (type === 'Liver') {
+                        if (pathData.AFP) newData.AFP = pathData.AFP;
+                        if (pathData.cirrhosis) newData.Cirrhosis = pathData.cirrhosis;
+                        if (pathData.pv_thrombosis) newData.Thrombosis = pathData.pv_thrombosis;
+                    }
                     
                     setPatientData(newData);
-
-                    // 3. AUTO-GENERATE PLAN
                     generateTreatmentPlan(null, { cancer_type: type.toLowerCase(), ...newData });
                 }
             } catch (err) {
@@ -163,16 +188,80 @@ function TreatmentPlan() {
   }, []);
 
 
-  const factorsChartData = {
-    labels: ['Tumor Size', 'Location', 'ER Status', 'HER2 Status', 'Age', 'KPS'],
-    datasets: [{
-      label: 'Decision Weight',
-      data: [85, 75, 95, 80, 65, 70],
-      backgroundColor: 'rgba(0, 240, 255, 0.2)',
-      borderColor: '#00F0FF',
-      borderWidth: 2
-    }]
-  };
+  const factorsChartData = useMemo(() => {
+    let labels = ['Stage', 'Age', 'KPS', 'History', 'Biomarkers', 'Clinical'];
+    let data = [85, 70, 75, 80, 90, 65];
+
+    if (cancerType === 'Breast') {
+      labels = ['Clinical Stage', 'ER Status', 'PR Status', 'HER2 Status', 'BRCA1/2', 'Patient Age'];
+      data = [
+        patientData.stage ? (['III', 'IV'].includes(String(patientData.stage).toUpperCase()) ? 95 : 80) : 50,
+        patientData.ER === 'positive' ? 98 : 70,
+        patientData.PR === 'positive' ? 92 : 65,
+        patientData.HER2 === 'positive' ? 96 : 75,
+        patientData.BRCA === 'positive' ? 88 : 40,
+        patientData.age ? 65 : 45
+      ];
+    } else if (cancerType === 'Brain') {
+      labels = ['MGMT Methylation', 'IDH1 Status', 'Clinical Stage', 'Resection Status', 'Patient Age', 'KPS Score'];
+      data = [
+        patientData.MGMT === 'methylated' ? 98 : 60,
+        patientData.IDH === 'mutant' ? 95 : 55,
+        patientData.stage === 'LOCALIZED' ? 85 : 95,
+        patientData.Resection === 'complete' ? 90 : 70,
+        patientData.age ? 70 : 50,
+        patientData.KPS ? (parseInt(patientData.KPS) > 80 ? 80 : 95) : 60
+      ];
+    } else if (cancerType === 'Lung') {
+      labels = ['EGFR Mutation', 'ALK Fusion', 'PD-L1 Expression', 'Clinical Stage', 'Patient Age', 'ECOG/KPS'];
+      data = [
+        patientData.EGFR === 'positive' ? 98 : 65,
+        patientData.ALK === 'positive' ? 96 : 60,
+        patientData.PDL1 && patientData.PDL1 !== 'low' ? 90 : 50,
+        patientData.stage ? 92 : 70,
+        patientData.age ? 75 : 55,
+        80
+      ];
+    } else if (cancerType === 'Liver') {
+        labels = ['AFP Levels', 'Cirrhosis', 'Thrombosis', 'Clinical Stage', 'Patient Age', 'KPS'];
+        data = [
+            patientData.AFP === 'normal' ? 60 : 95,
+            patientData.Cirrhosis === 'yes' ? 90 : 50,
+            patientData.Thrombosis === 'yes' ? 98 : 40,
+            patientData.stage ? 85 : 60,
+            patientData.age ? 70 : 50,
+            85
+        ];
+    } else if (cancerType === 'Pancreas') {
+        labels = ['Resectability', 'CA19-9 Levels', 'BRCA Mutation', 'Clinical Stage', 'Patient Age', 'KPS'];
+        data = [
+            patientData.stage === 'RESECTABLE' ? 98 : 75,
+            patientData['CA19-9'] === 'normal' ? 60 : 90,
+            patientData.BRCA === 'positive' ? 85 : 40,
+            patientData.stage ? 92 : 70,
+            patientData.age ? 65 : 45,
+            80
+        ];
+    }
+
+    const confidenceMultiplier = treatmentData ? (treatmentData.confidence / 100) : 0.9;
+    const adjustedData = data.map(v => Math.min(100, Math.round(v * confidenceMultiplier)));
+
+    return {
+      labels,
+      datasets: [{
+        label: 'Decision Weight',
+        data: adjustedData,
+        backgroundColor: 'rgba(0, 240, 255, 0.2)',
+        borderColor: '#00F0FF',
+        borderWidth: 2,
+        pointBackgroundColor: '#00F0FF',
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: '#00F0FF'
+      }]
+    };
+  }, [cancerType, patientData, treatmentData]);
 
   const factorsChartOptions = {
     responsive: true,
@@ -181,15 +270,43 @@ function TreatmentPlan() {
     plugins: { legend: { labels: { color: '#64748B' } } }
   };
 
-  const timelineChartData = {
-    labels: ['Surgery', 'Recovery', 'Radiation', 'Chemotherapy', 'Follow-up'],
-    datasets: [{
-      label: 'Duration (weeks)',
-      data: [2, 4, 6, 24, 52],
-      backgroundColor: ['#059789', '#00F0FF', '#8B5CF6', '#F59E0B', '#64748B'],
-      borderRadius: 8
-    }]
-  };
+  const timelineChartData = useMemo(() => {
+    let labels = ['Surgery', 'Recovery', 'Radiation', 'Chemotherapy', 'Follow-up'];
+    let data = [2, 4, 6, 24, 52];
+    let colors = ['#059789', '#00F0FF', '#8B5CF6', '#F59E0B', '#64748B'];
+
+    if (cancerType === 'Breast') {
+      labels = ['Surgery', 'Recovery', 'Chemotherapy', 'Radiation', 'Endocrine Therapy', 'Follow-up'];
+      data = [2, 4, 18, 6, 260, 52];
+      colors = ['#059789', '#00F0FF', '#F59E0B', '#8B5CF6', '#EC4899', '#64748B'];
+    } else if (cancerType === 'Brain') {
+      labels = ['Resection', 'Recovery', 'RT + TMZ', 'Adjuvant TMZ', 'Follow-up'];
+      data = [1, 3, 6, 48, 104];
+      colors = ['#059789', '#00F0FF', '#8B5CF6', '#F59E0B', '#64748B'];
+    } else if (cancerType === 'Lung') {
+      labels = ['Surgery', 'Recovery', 'Chemotherapy', 'Immunotherapy', 'Follow-up'];
+      data = [2, 4, 12, 52, 104];
+      colors = ['#059789', '#00F0FF', '#F59E0B', '#10B981', '#64748B'];
+    } else if (cancerType === 'Liver') {
+        labels = ['Resection/TACE', 'Recovery', 'Systemic Therapy', 'Monitoring'];
+        data = [1, 4, 24, 104];
+        colors = ['#059789', '#00F0FF', '#F59E0B', '#64748B'];
+    } else if (cancerType === 'Pancreas') {
+        labels = ['Whipple/Surgery', 'Recovery', 'Adjuvant Chemo', 'Follow-up'];
+        data = [2, 6, 24, 104];
+        colors = ['#059789', '#00F0FF', '#F59E0B', '#64748B'];
+    }
+
+    return {
+      labels,
+      datasets: [{
+        label: 'Duration (weeks)',
+        data,
+        backgroundColor: colors,
+        borderRadius: 8
+      }]
+    };
+  }, [cancerType]);
 
   const timelineChartOptions = {
     indexAxis: 'y',
@@ -199,21 +316,89 @@ function TreatmentPlan() {
     plugins: { legend: { display: false } }
   };
 
+  const integrationData = useMemo(() => {
+    const defaultData = {
+      mri: { impact: 'HIGH IMPACT', color: '#00F0FF', desc: 'Tumor volume and location' },
+      genomic: { impact: 'CRITICAL', color: '#F59E0B', desc: 'Biomarker profiling' },
+      clinical: { impact: 'MODERATE', color: '#059789', desc: 'Performance status' }
+    };
+
+    if (cancerType === 'Breast') {
+      return {
+        mri: { impact: 'HIGH IMPACT', color: '#00F0FF', desc: 'Tumor size and nodal involvement' },
+        genomic: { impact: 'CRITICAL', color: '#F59E0B', desc: 'ER/PR/HER2 and BRCA status' },
+        clinical: { impact: 'MODERATE', color: '#059789', desc: 'Menopausal status and age' }
+      };
+    } else if (cancerType === 'Brain') {
+      return {
+        mri: { impact: 'CRITICAL', color: '#F59E0B', desc: 'Resection margins and edema' },
+        genomic: { impact: 'HIGH IMPACT', color: '#00F0FF', desc: 'MGMT and IDH1 status' },
+        clinical: { impact: 'HIGH IMPACT', color: '#00F0FF', desc: 'KPS and neurological deficit' }
+      };
+    } else if (cancerType === 'Lung') {
+      return {
+        mri: { impact: 'HIGH IMPACT', color: '#00F0FF', desc: 'Chest CT/PET metabolic activity' },
+        genomic: { impact: 'CRITICAL', color: '#F59E0B', desc: 'EGFR/ALK/KRAS/PD-L1 status' },
+        clinical: { impact: 'MODERATE', color: '#059789', desc: 'Smoking history and ECOG' }
+      };
+    } else if (cancerType === 'Liver') {
+        return {
+            mri: { impact: 'HIGH IMPACT', color: '#00F0FF', desc: 'Vascular invasion (PVT)' },
+            genomic: { impact: 'MODERATE', color: '#059789', desc: 'AFP protein markers' },
+            clinical: { impact: 'CRITICAL', color: '#F59E0B', desc: 'Cirrhosis and Child-Pugh score' }
+        };
+    } else if (cancerType === 'Pancreas') {
+        return {
+            mri: { impact: 'CRITICAL', color: '#F59E0B', desc: 'Vessel abutment (SMA/SMV)' },
+            genomic: { impact: 'HIGH IMPACT', color: '#00F0FF', desc: 'CA19-9 and BRCA mutation' },
+            clinical: { impact: 'MODERATE', color: '#059789', desc: 'Pain and jaundice status' }
+        };
+    }
+    return defaultData;
+  }, [cancerType]);
+
   const protocols = useMemo(() => {
     if (!treatmentData) return [];
-    const list = [{
-        name: treatmentData.recommendedProtocol,
-        score: treatmentData.confidence,
-        duration: '12-18 months',
-        efficacy: 'High',
-        toxicity: 'Moderate',
-        cost: 'High',
-        recommended: true
-    }];
-    list.push(
-        { name: 'Alternative Protocol A', score: 85.3, duration: '6-12 months', efficacy: 'Moderate', toxicity: 'Low-Moderate', cost: 'Moderate', recommended: false },
-        { name: 'Alternative Protocol B', score: 60.6, duration: '6-12 months', efficacy: 'Moderate', toxicity: 'Low-Moderate', cost: 'Moderate', recommended: false }
-    );
+    
+    let list = [];
+    if (treatmentData.protocols && treatmentData.protocols.length > 0) {
+        list = [...treatmentData.protocols];
+    } else {
+        list = [{
+            name: treatmentData.recommendedProtocol || 'Standard Protocol',
+            score: treatmentData.confidence || 92,
+            duration: '6-12 months',
+            efficacy: 'High',
+            toxicity: 'Moderate',
+            cost: 'High',
+            recommended: true
+        }];
+    }
+
+    if (list.length < 2) {
+        list.push({
+            name: 'Targeted Clinical Trial',
+            score: Math.round((list[0].score || 90) - 13.5),
+            duration: 'Variable',
+            efficacy: 'Investigational',
+            toxicity: 'Low-Moderate',
+            cost: 'Trial-covered',
+            recommended: false
+        });
+    }
+
+    if (list.length < 3) {
+        list.push({
+            name: 'Advanced Research Protocol',
+            score: Math.round((list[1].score || 80) - 6.5),
+            duration: '12-24 months',
+            efficacy: 'High (Projected)',
+            toxicity: 'Moderate',
+            cost: 'Institutional',
+            recommended: false
+        });
+    }
+
     return list;
   }, [treatmentData]);
 
@@ -257,21 +442,49 @@ function TreatmentPlan() {
         {loading && <div className="text-center mb-xl" style={{ color: '#64748B', fontFamily: '"Space Grotesk"', textAlign: 'center', marginBottom: '2rem' }}>The Treatment Engine is synthesizing guidelines...</div>}
 
         {/* RECOMMENDATION CARD */}
-        {treatmentData && (
+        {treatmentData && treatmentData.planData && (
         <div className="recommendation-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
                 <div>
                     <span className="protocol-badge">RECOMMENDED PROTOCOL</span>
                     <h2 className="protocol-name">{treatmentData.recommendedProtocol}</h2>
-                    <p className="protocol-desc">
-                        {treatmentData.description}
-                    </p>
                 </div>
                 <div className="guideline-badge">
                     <span>📋</span><span>{treatmentData.guidelineAlignment}</span>
                 </div>
             </div>
-            <div className="confidence-meter">
+
+            <div className="plan-details-grid">
+                <div className="plan-detail-section">
+                    <label className="param-label">CLINICAL RATIONALE</label>
+                    <p className="protocol-desc">{treatmentData.planData.clinical_rationale}</p>
+                </div>
+                
+                <div className="plan-detail-section">
+                    <label className="param-label">FOLLOW-UP PLAN</label>
+                    <p className="protocol-desc">{treatmentData.planData.follow_up}</p>
+                </div>
+
+                <div className="plan-detail-section">
+                    <label className="param-label">ALTERNATIVE OPTIONS</label>
+                    <ul className="plan-list">
+                        {treatmentData.planData.alternatives?.map((alt, i) => (
+                            <li key={i}>{alt}</li>
+                        ))}
+                    </ul>
+                </div>
+
+                <div className="plan-detail-section">
+                    <label className="param-label" style={{ color: '#EF4444' }}>SAFETY ALERTS & CONTRAINDICATIONS</label>
+                    <ul className="plan-list">
+                        {treatmentData.planData.safety_alerts?.map((alert, i) => (
+                            <li key={i} style={{ color: '#FCA5A5' }}>{alert}</li>
+                        ))}
+                    </ul>
+                </div>
+            </div>
+
+            <div className="confidence-meter" style={{ marginTop: '2rem' }}>
                 <div className="confidence-fill" style={{ width: `${treatmentData.confidence}%` }}>
                     {treatmentData.confidence}% CONFIDENCE SCORE
                 </div>
@@ -335,18 +548,18 @@ function TreatmentPlan() {
             <div className="grid-3">
                 <div className="stat-card">
                     <div className="param-label">MRI ANALYSIS</div>
-                    <div className="stat-value" style={{ color: '#00F0FF' }}>HIGH IMPACT</div>
-                    <p style={{ color: '#cbd5e1', fontSize: '0.875rem', margin: 0 }}>Tumor volume and location</p>
+                    <div className="stat-value" style={{ color: integrationData.mri.color }}>{integrationData.mri.impact}</div>
+                    <p style={{ color: '#cbd5e1', fontSize: '0.875rem', margin: 0 }}>{integrationData.mri.desc}</p>
                 </div>
                 <div className="stat-card">
                     <div className="param-label">GENOMIC PROFILE</div>
-                    <div className="stat-value" style={{ color: '#F59E0B' }}>CRITICAL</div>
-                    <p style={{ color: '#cbd5e1', fontSize: '0.875rem', margin: 0 }}>Biomarker status (ER/PR/HER2)</p>
+                    <div className="stat-value" style={{ color: integrationData.genomic.color }}>{integrationData.genomic.impact}</div>
+                    <p style={{ color: '#cbd5e1', fontSize: '0.875rem', margin: 0 }}>{integrationData.genomic.desc}</p>
                 </div>
                 <div className="stat-card">
                     <div className="param-label">CLINICAL HISTORY</div>
-                    <div className="stat-value" style={{ color: '#059789' }}>MODERATE</div>
-                    <p style={{ color: '#cbd5e1', fontSize: '0.875rem', margin: 0 }}>Performance status</p>
+                    <div className="stat-value" style={{ color: integrationData.clinical.color }}>{integrationData.clinical.impact}</div>
+                    <p style={{ color: '#cbd5e1', fontSize: '0.875rem', margin: 0 }}>{integrationData.clinical.desc}</p>
                 </div>
             </div>
         </div>
