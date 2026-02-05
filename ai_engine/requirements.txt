@@ -1,5 +1,7 @@
 Flask
 flask-cors
+transformers
+torch
 sentence-transformers
 faiss-cpu
 numpy

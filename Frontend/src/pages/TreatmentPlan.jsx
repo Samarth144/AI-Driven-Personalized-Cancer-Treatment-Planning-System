@@ -90,10 +90,12 @@ function TreatmentPlan() {
     setEvidence([]);
 
     try {
-      const response = await fetch('http://127.0.0.1:5000/recommend', {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:8000/api/treatments/generate-formatted', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(fullPatientData),
       });
@@ -103,16 +105,20 @@ function TreatmentPlan() {
       }
 
       const result = await response.json();
-      const { plan, evidence, confidence, protocols } = result;
+      if (!result.success) throw new Error(result.message || 'Failed to generate plan');
+
+      const { rawPlan, formattedEvidence } = result.data;
 
       setTreatmentData({
-        recommendedProtocol: plan.primary_treatment || 'See plan details',
-        confidence: confidence || 92.0,
-        planData: plan,
+        recommendedProtocol: rawPlan.primary_treatment || 'See plan details',
+        confidence: result.confidence || 92.0,
+        planData: rawPlan,
         guidelineAlignment: 'AI-Generated Evidence Base',
-        protocols: protocols || []
+        protocols: result.protocols || []
       });
-      setEvidence(evidence || []);
+      
+      // Use the Gemini-formatted evidence
+      setEvidence([{ source: 'AI Clinical Summary', text: formattedEvidence }]);
 
     } catch (error) {
       console.error("Failed to generate treatment plan:", error);
@@ -137,15 +143,19 @@ function TreatmentPlan() {
                     const p = res.data.data;
                     const pathData = p.pathologyAnalysis?.extracted_data || {};
                     
+                    // 1. Set Cancer Type from Patient Record
                     const type = p.cancerType || 'Breast';
                     setCancerType(type);
                     
+                    // 2. Initialize and Override with AI Extracted Data
                     let newData = getInitialPatientData(type);
                     
+                    // Universal Overrides
                     if (pathData.stage) newData.stage = pathData.stage;
                     if (pathData.age) newData.age = pathData.age;
                     if (p.kps) newData.KPS = p.kps;
 
+                    // Type Specific Mapping
                     if (type === 'Breast') {
                         if (pathData.ER) newData.ER = pathData.ER.toLowerCase();
                         if (pathData.PR) newData.PR = pathData.PR.toLowerCase();
@@ -360,6 +370,7 @@ function TreatmentPlan() {
   const protocols = useMemo(() => {
     if (!treatmentData) return [];
     
+    // Use protocols from backend if they exist and have at least 1 item
     let list = [];
     if (treatmentData.protocols && treatmentData.protocols.length > 0) {
         list = [...treatmentData.protocols];
@@ -375,6 +386,7 @@ function TreatmentPlan() {
         }];
     }
 
+    // Ensure we always have at least 3 for the UI layout
     if (list.length < 2) {
         list.push({
             name: 'Targeted Clinical Trial',
@@ -401,6 +413,49 @@ function TreatmentPlan() {
 
     return list;
   }, [treatmentData]);
+
+  const formatMarkdown = (text) => {
+    if (!text) return null;
+    
+    // Split by lines to handle bullet points and headers
+    const lines = text.split('\n');
+    
+    return lines.map((line, index) => {
+      let trimmedLine = line.trim();
+      
+      // Handle Bullet Points
+      if (trimmedLine.startsWith('* ') || trimmedLine.startsWith('- ')) {
+        const content = trimmedLine.substring(2);
+        return (
+          <li key={index} style={{ marginBottom: '0.5rem', listStyleType: 'disc', marginLeft: '1.5rem' }}>
+            {parseBold(content)}
+          </li>
+        );
+      }
+      
+      // Handle Headers (e.g. **Header**) - if the whole line is bolded and ends with a colon or is just short
+      if (trimmedLine.startsWith('**') && trimmedLine.endsWith('**')) {
+          return <h5 key={index} style={{ color: '#00F0FF', marginTop: '1rem', marginBottom: '0.5rem', fontFamily: '"Rajdhani"' }}>{trimmedLine.replace(/\*\*/g, '')}</h5>;
+      }
+
+      // Default paragraph
+      return (
+        <p key={index} style={{ marginBottom: '1rem' }}>
+          {parseBold(trimmedLine)}
+        </p>
+      );
+    });
+  };
+
+  const parseBold = (text) => {
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i} style={{ color: '#fff' }}>{part.replace(/\*\*/g, '')}</strong>;
+      }
+      return part;
+    });
+  };
 
   return (
     <div className="treatment-plan-root">
@@ -524,11 +579,13 @@ function TreatmentPlan() {
         {/* EVIDENCE BASE */}
         <div className="card-glass">
             <h3 className="section-title">Evidence Base & Guidelines</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
                 {evidence.map((e, index) => (
-                    <div key={index} className="evidence-section">
-                        <h4 style={{ color: '#00F0FF', fontFamily: '"Rajdhani"', margin: '0 0 0.5rem 0' }}>{e.source}</h4>
-                        <p style={{ color: '#cbd5e1', fontSize: '0.9rem', lineHeight: 1.5, fontFamily: '"Space Grotesk"', margin: 0 }}>{e.text}</p>
+                    <div key={index} className="evidence-section" style={{ borderLeft: '2px solid #00F0FF', paddingLeft: '1.5rem' }}>
+                        <h4 style={{ color: '#00F0FF', fontFamily: '"Rajdhani"', margin: '0 0 1rem 0' }}>{e.source}</h4>
+                        <div style={{ color: '#cbd5e1', fontSize: '0.95rem', lineHeight: 1.6, fontFamily: '"Space Grotesk"', margin: 0 }}>
+                            {formatMarkdown(e.text)}
+                        </div>
                     </div>
                 ))}
             </div>
@@ -572,7 +629,7 @@ function TreatmentPlan() {
             <button className="btn-tech btn-primary-gradient" onClick={() => navigate(`/outcome-prediction${location.search}`)}>
                 VIEW OUTCOME PREDICTIONS →
             </button>
-            <button className="btn-tech btn-secondary-glass" onClick={() => navigate('/pathway-simulator')}>
+            <button className="btn-tech btn-secondary-glass" onClick={() => navigate(`/pathway-simulator${location.search}`)}>
                 SIMULATE PATHWAY
             </button>
         </div>

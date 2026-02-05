@@ -496,31 +496,37 @@ const MRIAnalysis = () => {
   return (
     <div className="mri-analysis-root">
       <NotificationToast />
-      <div className="fluid-container">
+      <Box className="fluid-container" sx={{ px: { xs: 2, md: 6 }, py: 4 }}>
 
         {/* HEADER & MODEL SELECTOR */}
         <div className="console-header">
-          <Typography variant="h4" sx={{ fontFamily: '"Rajdhani"', fontWeight: 700, color: '#fff', mb: 2 }}>
-            MRI SEGMENTATION & RADIOMICS
-          </Typography>
-          <div className="model-selector" style={{ pointerEvents: 'none' }}>
-            <Button
-              className="model-btn active"
-              sx={{ minWidth: '150px' }}
-            >
-              {model.toUpperCase()} MODEL ACTIVE
-            </Button>
-          </div>
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+            <Typography variant="h4" sx={{ fontFamily: '"Rajdhani"', fontWeight: 700, color: '#fff' }}>
+              MRI SEGMENTATION & RADIOMICS
+            </Typography>
+          </Box>
           
-          <Button 
-            variant="contained" 
-            startIcon={<PlayArrowIcon />}
-            className="run-analysis-btn"
-            onClick={handleRunAnalysis}
-            disabled={loading || model !== 'Brain'}
-          >
-            {loading ? 'PROCESSING...' : 'RUN NEW ANALYSIS'}
-          </Button>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+            <div className="model-selector" style={{ pointerEvents: 'none', margin: 0 }}>
+              <Button
+                className="model-btn active"
+                sx={{ minWidth: '200px' }}
+              >
+                {model.toUpperCase()} MODULE ACTIVE
+              </Button>
+            </div>
+            
+            <Button 
+              variant="contained" 
+              startIcon={<PlayArrowIcon />}
+              className="run-analysis-btn"
+              onClick={handleRunAnalysis}
+              disabled={loading || model !== 'Brain'}
+              sx={{ width: 'fit-content', px: 6, py: 1.5 }}
+            >
+              {loading ? 'PROCESSING...' : 'RUN NEW ANALYSIS'}
+            </Button>
+          </Box>
         </div>
 
         {model !== 'Brain' ? (
@@ -558,7 +564,7 @@ const MRIAnalysis = () => {
           </Box>
         ) : (
           /* MAIN GRID */
-          <Grid container spacing={4} sx={{ width: '95vw', minWidth: 0 }}>
+          <Grid container spacing={4} sx={{ width: '90vw', minWidth: 0 }}>
             <Grid item xs={12} lg={7}>
                <MRIViewer 
                   analysisId={analysisId}
@@ -576,7 +582,7 @@ const MRIAnalysis = () => {
                   <Typography variant="overline" sx={{ color: colors.teal, letterSpacing: '2px', fontWeight: 700, display: 'block', fontSize: '1.2rem', pt: '160px', pb: '10px' }}>
                     QUANTITATIVE METRICS
                   </Typography>
-                  <Grid container spacing={2} sx={{ mt: 1, gap: '1rem', justifyContent: 'center', width: '95vw' }}>
+                  <Grid container spacing={2} sx={{ mt: 1, gap: '1rem', justifyContent: 'center', width: '90vw' }}>
                      {metrics.map((m) => (
                        <Grid item xs={6} key={m.label}>
                          <MetricCard {...m} />
@@ -657,7 +663,7 @@ const MRIAnalysis = () => {
              PROCEED TO GENOMICS
            </Button>
         </div>
-      </div>
+      </Box>
     </div>
   );
 };

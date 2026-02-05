@@ -29,18 +29,14 @@ const uploadHistopathologyReport = async (req, res) => {
   }
 
   const filePath = req.file.path;
+  const absolutePath = path.resolve(filePath);
 
   try {
-    const dataBuffer = fs.readFileSync(filePath);
-    const data = await pdf(dataBuffer);
-    const extractedText = data.text;
-
-    // Log the extracted text for debugging
-    console.log('Extracted Text from PDF:', extractedText);
-
-    // Send extracted text to AI engine for analysis
-    const aiResponse = await axios.post('http://localhost:5000/process_report_text', {
-      text: extractedText,
+    // Send file path to AI engine for analysis
+    console.log('Sending file path to AI Engine:', absolutePath);
+    const aiResponse = await axios.post('http://localhost:5000/process_report_file', {
+      file_path: absolutePath,
+      cancer_type: req.body.cancer_type // Pass if provided
     });
 
     // Send the AI's response back to the frontend
@@ -50,7 +46,7 @@ const uploadHistopathologyReport = async (req, res) => {
       ...aiResponse.data,
     });
   } catch (error) {
-    console.error('Error processing PDF or contacting AI engine:', error.message);
+    console.error('Error contacting AI engine for PDF processing:', error.message);
     if (error.response) {
       console.error('AI Engine Response:', error.response.data);
       return res.status(500).json({ message: 'Error from AI engine.', details: error.response.data });

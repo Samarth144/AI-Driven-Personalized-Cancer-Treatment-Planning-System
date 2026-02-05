@@ -9,18 +9,15 @@
 
 .fluid-container {
     width: 100%;
-    padding: 0 1rem;
     box-sizing: border-box;
 }
 
-/* Force 95vw width for the main grid */
+/* Force 90vw width for the main grid */
 .mri-main-grid {
-    width: 95vw !important;
+    width: 90vw !important;
     margin-left: auto !important;
     margin-right: auto !important;
 }
-
-@media (min-width: 600px) { .fluid-container { padding: 0 2rem; } }
 
 /* Header & Model Selector */
 .console-header {
@@ -65,7 +62,7 @@
     display: flex;
     gap: 1rem;
     flex: 1;
-    width: 95vw;
+    width: 90vw;
 }
 
 .diagnostic-viewport {

@@ -1,15 +1,24 @@
 {
   "stages": {
     "RESECTABLE": {
+      "primary_treatments": ["Whipple Procedure followed by Adjuvant Chemotherapy"],
       "surgery": ["Whipple procedure"],
-      "adjuvant": ["mFOLFIRINOX or Gemcitabine + Capecitabine"]
+      "adjuvant": ["mFOLFIRINOX or Gemcitabine + Capecitabine"],
+      "alternatives": ["Neoadjuvant Therapy (FOLFIRINOX)", "Clinical Trial"],
+      "follow_up": ["Imaging q3-6m"]
     },
     "LOCALLY_ADVANCED": {
+      "primary_treatments": ["Induction Systemic Therapy (FOLFIRINOX)"],
       "systemic": ["FOLFIRINOX or Gemcitabine+nab-Paclitaxel"],
-      "radiation": ["Consider SBRT"]
+      "radiation": ["Consider SBRT"],
+      "alternatives": ["Chemoradiation", "Clinical Trial Participation"],
+      "follow_up": ["Imaging q2-3m"]
     },
     "METASTATIC": {
-      "systemic": ["FOLFIRINOX", "Gemcitabine + nab-Paclitaxel"]
+      "primary_treatments": ["Palliative Systemic Therapy (FOLFIRINOX)"],
+      "systemic": ["FOLFIRINOX", "Gemcitabine + nab-Paclitaxel"],
+      "alternatives": ["Liposomal Irinotecan-based Regimens", "Clinical Trial Participation"],
+      "follow_up": ["Imaging q2-3m"]
     }
   }
 }

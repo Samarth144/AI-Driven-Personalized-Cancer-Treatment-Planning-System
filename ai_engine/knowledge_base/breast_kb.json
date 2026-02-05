@@ -3,6 +3,7 @@
     "0": {
       "primary_treatments": ["Breast-conserving surgery", "Radiation"],
       "systemic": ["Endocrine therapy if ER/PR positive"],
+      "alternatives": ["Mastectomy without radiation", "Clinical Trial"],
       "notes": "DCIS management focuses on local control"
     },
     "I": {
@@ -10,6 +11,7 @@
       "targeted": ["Trastuzumab if HER2+"],
       "immunotherapy": [],
       "brca": ["Consider Olaparib in high-risk BRCA+"],
+      "alternatives": ["AC-T (Adriamycin/Cyclophosphamide followed by Taxol)", "Clinical Trial"],
       "follow_up": ["Exam every 6-12m for 5y", "Annual mammogram"]
     },
     "II": {
@@ -17,6 +19,7 @@
       "targeted": ["Trastuzumab 1y", "Pertuzumab optional"],
       "residual": ["Switch to T-DM1 if residual disease"],
       "brca": ["Olaparib 1y if BRCA+ high-risk"],
+      "alternatives": ["AC-T with HER2 blockade", "Clinical Trial"],
       "follow_up": ["Exam q 3-6m for 5y", "Cardiac monitoring", "Annual mammogram"]
     },
     "III": {
@@ -25,6 +28,7 @@
       "radiation": ["PMRT to chest wall & nodes"],
       "residual": ["T-DM1"],
       "brca": ["Olaparib"],
+      "alternatives": ["Dose-dense AC-T", "Clinical Trial"],
       "follow_up": ["Exam q3-6m", "Cardiac monitoring"]
     },
     "IV": {
@@ -32,6 +36,7 @@
       "targeted": ["Trastuzumab", "Pertuzumab", "T-DXd", "T-DM1"],
       "immunotherapy": ["Pembrolizumab if PD-L1+ TNBC"],
       "endocrine": ["AI + CDK4/6 inhibitor if ER+"],
+      "alternatives": ["Tucatinib-based regimens", "Clinical Trial Participation"],
       "follow_up": ["Q2-3m imaging"]
     }
   }

@@ -17,6 +17,7 @@ import TreatmentPlan from './pages/TreatmentPlan';
 import OutcomePrediction from './pages/OutcomePrediction';
 import PathwaySimulator from './pages/PathwaySimulator';
 import BlockchainAudit from './pages/BlockchainAudit';
+import PatientProfile from './pages/PatientProfile';
 
 // Create a global theme instance
 const theme = createTheme({
@@ -78,6 +79,7 @@ function App() {
             <Route path="/outcome-prediction" element={<OutcomePrediction />} />
             <Route path="/pathway-simulator" element={<PathwaySimulator />} />
             <Route path="/blockchain-audit" element={<BlockchainAudit />} />
+            <Route path="/patient-profile" element={<PatientProfile />} />
           </Routes>
           </Box>
         </Box>

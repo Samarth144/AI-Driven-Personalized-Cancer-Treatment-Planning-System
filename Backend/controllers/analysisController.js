@@ -186,22 +186,26 @@ exports.processAnalysis = async (req, res) => {
                  console.log("Generating 3D Mesh for AR...");
                  await runScript('mask_to_mesh.py');
                  await runScript('merge_ar_scene.py');
-                 
-                 // 3. Move files to unique folder
-                 const fs = require('fs');
-                 const filesToMove = ['tumor_mask.npy', 'tumor_probs.npy', 'tumor.glb', 'edema.glb', 'brain.glb', 'tumor_with_brain.glb'];
-                 filesToMove.forEach(file => {
-                     const oldPath = path.join(scriptDir, file); // Files are now generated here
-                     const newPath = path.join(resultsDir, file);
-                     if (fs.existsSync(oldPath)) {
-                         if (fs.existsSync(newPath)) fs.unlinkSync(newPath); // Remove old version if exists
-                         fs.renameSync(oldPath, newPath);
-                     }
-                 });
-                 console.log(`Dynamic AR assets stored in: ${resultsDir}`);
              } catch (meshErr) {
                  console.error("3D Mesh Generation failed", meshErr);
              }
+
+             // 3. Move files to unique folder (regardless of mesh success)
+             const fs = require('fs');
+             const filesToMove = ['tumor_mask.npy', 'tumor_probs.npy', 'tumor.glb', 'edema.glb', 'brain.glb', 'tumor_with_brain.glb'];
+             filesToMove.forEach(file => {
+                 const oldPath = path.join(scriptDir, file); // Files are generated here
+                 const newPath = path.join(resultsDir, file);
+                 if (fs.existsSync(oldPath)) {
+                     try {
+                         if (fs.existsSync(newPath)) fs.unlinkSync(newPath); // Remove old version if exists
+                         fs.renameSync(oldPath, newPath);
+                     } catch (moveErr) {
+                         console.error(`Failed to move ${file}: ${moveErr.message}`);
+                     }
+                 }
+             });
+             console.log(`Dynamic assets stored in: ${resultsDir}`);
 
              // Extract JSON metrics from stdout
              let metrics = {};

@@ -27,70 +27,37 @@ exports.analyzePathology = async (req, res) => {
 
         // Construct absolute path
         const absolutePath = path.resolve(__dirname, '..', patient.pathologyReportPath);
-        console.log(`Absolute File Path: ${absolutePath}`);
+        console.log(`Absolute File Path for AI Engine: ${absolutePath}`);
 
         if (!fs.existsSync(absolutePath)) {
              console.error("File does not exist on disk at:", absolutePath);
-             const dir = path.dirname(absolutePath);
-             if (fs.existsSync(dir)) {
-                 console.log(`Contents of ${dir}:`, fs.readdirSync(dir));
-             } else {
-                 console.log(`Directory ${dir} does not exist.`);
-             }
-             return res.status(404).json({ message: 'Report file not found on server. It may have been deleted.' });
+             return res.status(404).json({ message: 'Report file not found on server.' });
         }
 
-        let dataBuffer;
+        // Send file path and cancerType to AI Engine
+        console.log(`Sending file to AI Engine for ${patient.cancerType} analysis...`);
+        let aiResponse;
         try {
-            dataBuffer = fs.readFileSync(absolutePath);
-            console.log("File read successfully.");
-        } catch (readErr) {
-            console.error("File read error:", readErr);
-            return res.status(500).json({ message: "Failed to read file from disk." });
-        }
-        
-        let extractedText = "";
-        try {
-            console.log("pdfParser keys:", Object.keys(pdfParser)); 
-            
-            // Temporary fix attempt: Check if it behaves like version 1.1.1 or 2.x
-            // If it's the class-based one:
-            if (pdfParser.PDFParse) {
-                 const parser = new pdfParser.PDFParse({ data: dataBuffer });
-                 const data = await parser.getText();
-                 extractedText = data.text;
-            } else if (typeof pdfParser === 'function') {
-                 const data = await pdfParser(dataBuffer);
-                 extractedText = data.text;
-            } else {
-                 // Try default if it's an object with default
-                 const func = pdfParser.default || pdfParser;
-                 if (typeof func === 'function') {
-                     const data = await func(dataBuffer);
-                     extractedText = data.text;
-                 } else {
-                     throw new Error(`Unknown pdf-parse structure: ${JSON.stringify(pdfParser)}`);
-                 }
+            aiResponse = await axios.post('http://localhost:5000/process_report_file', {
+                file_path: absolutePath,
+                cancer_type: patient.cancerType // Pass the type from Intake Form
+            });
+            console.log("AI Engine responded successfully.");
+        } catch (aiErr) {
+            console.error("AI Engine Communication Error:", aiErr.message);
+            if (aiErr.response) {
+                console.error("AI Engine Data:", aiErr.response.data);
+                return res.status(500).json({ message: "AI Engine Error", details: aiErr.response.data });
             }
-
-            console.log(`PDF Parsed. Text length: ${extractedText.length} chars`);
-        } catch (pdfErr) {
-            console.error("PDF Parse error:", pdfErr);
-            return res.status(500).json({ message: "Failed to parse PDF content.", error: pdfErr.message });
+            throw aiErr;
         }
-
-        // Send to AI Engine
-        console.log("Sending to AI Engine...");
-        const aiResponse = await axios.post('http://localhost:5000/process_report_text', {
-            text: extractedText,
-        });
-        console.log("AI Engine responded successfully.");
 
         // Save extracted data and analysis to DB
+        console.log("Updating patient record with analysis...");
         await patient.update({
-            medicalHistory: extractedText, // Save raw extracted text
             pathologyAnalysis: aiResponse.data // Save structured AI analysis
         });
+        console.log("Patient record updated.");
 
         res.json({
             success: true,
@@ -98,14 +65,11 @@ exports.analyzePathology = async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Error analyzing pathology:", error.message);
-        if (error.response) {
-             console.error("AI Engine Response Error:", error.response.data);
-             return res.status(500).json({ message: 'AI Engine Error', details: error.response.data });
-        }
+        console.error("CRITICAL ERROR in analyzePathology:", error);
         res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 };

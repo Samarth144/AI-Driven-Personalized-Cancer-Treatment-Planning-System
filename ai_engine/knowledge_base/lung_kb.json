@@ -1,25 +1,36 @@
 {
   "stages": {
     "I": {
+      "primary_treatments": ["Surgical Resection (Lobectomy)"],
       "surgery": ["Lobectomy"],
       "adjuvant": [],
+      "alternatives": ["SBRT (Stereotactic Body Radiotherapy)", "Clinical Trial"],
       "follow_up": ["CT chest q6m for 2y then yearly"]
     },
     "II": {
+      "primary_treatments": ["Surgery + Adjuvant Platinum-based Chemotherapy"],
       "surgery": ["Lobectomy or pneumonectomy"],
-      "adjuvant": ["Platinum chemo"]
+      "adjuvant": ["Platinum chemo"],
+      "alternatives": ["Chemoradiation", "Clinical Trial Participation"],
+      "follow_up": ["CT chest q6m for 2y"]
     },
     "III": {
+      "primary_treatments": ["Concurrent Chemoradiation followed by Immunotherapy"],
       "systemic": ["Concurrent chemo + radiation"],
-      "immunotherapy": ["Durvalumab consolidation if PD-L1+"]
+      "immunotherapy": ["Durvalumab consolidation if PD-L1+"],
+      "alternatives": ["Sequential Chemotherapy and Radiation", "Clinical Trial"],
+      "follow_up": ["CT q3-6m"]
     },
     "IV": {
+      "primary_treatments": ["Targeted Therapy or Immunotherapy (based on markers)"],
       "targeted": {
         "EGFR": "Osimertinib",
         "ALK": "Alectinib",
         "ROS1": "Crizotinib"
       },
-      "immunotherapy": ["Pembrolizumab if PD-L1 ≥50%"]
+      "immunotherapy": ["Pembrolizumab if PD-L1 ≥50%"],
+      "alternatives": ["Platinum-based Doublet Chemotherapy", "Clinical Trial"],
+      "follow_up": ["Imaging q6-12w"]
     }
   }
 }

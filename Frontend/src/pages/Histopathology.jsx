@@ -5,13 +5,9 @@ import {
   Box, Container, Typography, Button, IconButton, LinearProgress, Grid, Chip, Divider
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
-import ArticleIcon from '@mui/icons-material/Article'; 
-import ScienceIcon from '@mui/icons-material/Science'; 
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import LinkIcon from '@mui/icons-material/Link';
@@ -21,7 +17,7 @@ import './Histopathology.css';
 
 // --- SUB-COMPONENTS FOR EXTRACTION MATRIX ---
 
-const ReceptorBadge = ({ label, value, full, index }) => (
+const ReceptorBadge = ({ label, value, full, index, color = "#00F0FF" }) => (
   <motion.div
     initial={{ opacity: 0, x: -20 }}
     animate={{ opacity: 1, x: 0 }}
@@ -33,7 +29,7 @@ const ReceptorBadge = ({ label, value, full, index }) => (
       bgcolor: 'rgba(255,255,255,0.02)', 
       border: `1px solid rgba(255,255,255,0.05)`,
       transition: 'all 0.3s',
-      '&:hover': { borderColor: '#00F0FF', bgcolor: 'rgba(0, 240, 255, 0.05)' }
+      '&:hover': { borderColor: color, bgcolor: `${color}10` }
     }}>
       <Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -47,13 +43,13 @@ const ReceptorBadge = ({ label, value, full, index }) => (
       </Box>
       
       <Chip 
-        label={value ? value.toUpperCase() : 'N/A'} 
+        label={value ? String(value).toUpperCase() : 'N/A'} 
         icon={<CheckCircleIcon style={{ fontSize: 14 }} />}
         size="small"
         sx={{ 
-          bgcolor: value?.toLowerCase() === 'positive' ? `rgba(0, 240, 255, 0.2)` : 'rgba(255,255,255,0.1)', 
-          color: value?.toLowerCase() === 'positive' ? '#00F0FF' : '#64748B', 
-          border: `1px solid ${value?.toLowerCase() === 'positive' ? '#00F0FF' : 'transparent'}`,
+          bgcolor: (value?.toLowerCase() === 'positive' || value?.toLowerCase() === 'mutant' || value?.toLowerCase() === 'methylated' || value?.toLowerCase() === 'present') ? `${color}20` : 'rgba(255,255,255,0.1)', 
+          color: (value?.toLowerCase() === 'positive' || value?.toLowerCase() === 'mutant' || value?.toLowerCase() === 'methylated' || value?.toLowerCase() === 'present') ? color : '#64748B', 
+          border: `1px solid ${(value?.toLowerCase() === 'positive' || value?.toLowerCase() === 'mutant' || value?.toLowerCase() === 'methylated' || value?.toLowerCase() === 'present') ? color : 'transparent'}`,
           fontFamily: '"JetBrains Mono"', fontWeight: 700,
           height: '24px'
         }} 
@@ -62,10 +58,10 @@ const ReceptorBadge = ({ label, value, full, index }) => (
   </motion.div>
 );
 
-const ClinicalField = ({ label, value, icon, large = false }) => (
+const ClinicalField = ({ label, value, icon, large = false, color = "#00F0FF" }) => (
   <Box sx={{ mb: 3 }}>
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-      {icon && React.cloneElement(icon, { sx: { fontSize: 16, color: '#00F0FF' } })}
+      {icon && React.cloneElement(icon, { sx: { fontSize: 16, color: color } })}
       <Typography variant="caption" sx={{ color: '#64748B', fontFamily: '"Space Grotesk"', letterSpacing: '1px' }}>
         {label.toUpperCase()}
       </Typography>
@@ -77,7 +73,7 @@ const ClinicalField = ({ label, value, icon, large = false }) => (
         fontWeight: 700, 
         color: '#fff',
         lineHeight: 1.1,
-        textShadow: large ? `0 0 20px rgba(0, 240, 255, 0.4)` : 'none'
+        textShadow: large ? `0 0 20px ${color}40` : 'none'
       }}
     >
       {value || '---'}
@@ -101,13 +97,66 @@ const ConnectionBadge = ({ patientId }) => (
 function Histopathology() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [analyzing, setAnalyzing] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [patientId, setPatientId] = useState(null);
 
-  // Auto-load if patientId is present
+  const getThemeColor = (type) => {
+    switch (type?.toLowerCase()) {
+      case 'brain': return '#A855F7';
+      case 'breast': return '#00F0FF';
+      case 'lung': return '#F59E0B';
+      case 'liver': return '#10B981';
+      case 'pancreas': return '#EC4899';
+      default: return '#00F0FF';
+    }
+  };
+
+  const renderMarkers = (type, data) => {
+    const color = getThemeColor(type);
+    switch (type?.toLowerCase()) {
+      case 'breast':
+        return (
+          <>
+            <ReceptorBadge label="ER" value={data.ER} full="Estrogen Receptor" index={0} color={color} />
+            <ReceptorBadge label="PR" value={data.PR} full="Progesterone Receptor" index={1} color={color} />
+            <ReceptorBadge label="HER2" value={data.HER2} full="Human Epidermal Growth Factor" index={2} color={color} />
+            <ReceptorBadge label="BRCA" value={data.BRCA} full="BRCA1/2 Mutation" index={3} color={color} />
+            <ReceptorBadge label="KI-67" value={data.ki67 ? `${data.ki67}%` : 'N/A'} full="Proliferation Index" index={4} color={color} />
+          </>
+        );
+      case 'brain':
+        return (
+          <>
+            <ReceptorBadge label="IDH1" value={data.IDH1} full="Isocitrate Dehydrogenase" index={0} color={color} />
+            <ReceptorBadge label="MGMT" value={data.MGMT} full="Promoter Methylation" index={1} color={color} />
+            <ReceptorBadge label="RESECTION" value={data.resection} full="Extent of Resection" index={2} color={color} />
+            <ReceptorBadge label="RADIATION" value={data.prior_radiation} full="Prior Radiotherapy" index={3} color={color} />
+          </>
+        );
+      case 'lung':
+        return (
+          <>
+            <ReceptorBadge label="EGFR" value={data.EGFR} full="Epidermal Growth Factor" index={0} color={color} />
+            <ReceptorBadge label="ALK" value={data.ALK} full="Anaplastic Lymphoma" index={1} color={color} />
+            <ReceptorBadge label="PD-L1" value={data.PDL1} full="Immune Checkpoint" index={2} color={color} />
+            <ReceptorBadge label="KRAS" value={data.KRAS} full="KRAS G12C Mutation" index={3} color={color} />
+          </>
+        );
+      case 'liver':
+        return (
+          <>
+            <ReceptorBadge label="AFP" value={data.AFP} full="Alpha-Fetoprotein" index={0} color={color} />
+            <ReceptorBadge label="CIRRHOSIS" value={data.cirrhosis} full="Liver Cirrhosis" index={1} color={color} />
+            <ReceptorBadge label="THROMBOSIS" value={data.pv_thrombosis} full="Portal Vein Thrombosis" index={2} color={color} />
+          </>
+        );
+      default:
+        return <Typography variant="body2" sx={{ color: '#64748B' }}>No biomarkers mapped for this cancer type.</Typography>;
+    }
+  };
+
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const pid = params.get('patientId');
@@ -124,7 +173,6 @@ function Histopathology() {
           const response = await axios.post(`http://localhost:8000/api/patients/${pid}/analyze-pathology`, {}, {
               headers: { Authorization: `Bearer ${token}` }
           });
-          
           if (response.data.success) {
               setAnalysisResult(response.data);
           }
@@ -145,10 +193,8 @@ function Histopathology() {
       alert('Please select a file to upload.');
       return;
     }
-
     const formData = new FormData();
     formData.append('histopathology_pdf', selectedFile);
-
     setUploading(true);
     try {
       const response = await axios.post('http://localhost:8000/api/uploads/histopathology', formData, {
@@ -158,8 +204,7 @@ function Histopathology() {
       alert('File uploaded and analyzed successfully!');
     } catch (error) {
       console.error('Error uploading file:', error);
-      const errorMessage = error.response?.data?.message || 'Error uploading file. Please try again.';
-      alert(errorMessage);
+      alert(error.response?.data?.message || 'Error uploading file.');
     } finally {
       setUploading(false);
     }
@@ -169,7 +214,6 @@ function Histopathology() {
     <Box className="histo-container">
       <Navbar />
       <Container maxWidth="xl" sx={{ py: 6, mt: 4 }}>
-
         <div className="histo-header">
           <div className="flex justify-between items-center mb-xl histo-header-content">
             <div>
@@ -178,7 +222,6 @@ function Histopathology() {
             </div>
           </div>
 
-          {/* PROCESSING STATE */}
           {patientId && !analysisResult && (
               <div className="card-glass mb-xl processing-card">
                   <div className="spinner-icon" />
@@ -189,60 +232,64 @@ function Histopathology() {
               </div>
           )}
 
-          {/* MANUAL UPLOAD */}
           {!patientId && !analysisResult && (
               <div className="card-glass mb-xl upload-card">
-              <h3 style={{ fontFamily: '"Rajdhani", sans-serif' }}>Upload Histopathology PDF</h3>
-              <p className="text-secondary mb-lg">The AI will analyze the report and suggest a treatment plan based on established guidelines.</p>
-              <div className="flex items-center gap-md">
-                  <input type="file" accept="application/pdf" onChange={handleFileChange} className="file-input" />
-                  <button className="btn btn-primary" onClick={handleFileUpload} disabled={uploading || !selectedFile}>
-                  {uploading ? 'Uploading & Analyzing...' : 'Upload & Analyze'}
-                  </button>
-              </div>
+                <h3 style={{ fontFamily: '"Rajdhani", sans-serif' }}>Upload Histopathology PDF</h3>
+                <p className="text-secondary mb-lg">The AI will analyze the report and suggest a treatment plan.</p>
+                <div className="flex items-center gap-md">
+                    <input type="file" accept="application/pdf" onChange={handleFileChange} className="file-input" />
+                    <button className="btn btn-primary" onClick={handleFileUpload} disabled={uploading || !selectedFile}>
+                      {uploading ? 'Uploading...' : 'Upload & Analyze'}
+                    </button>
+                </div>
               </div>
           )}
 
           {analysisResult && (
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}>
-              <Box className="card-glass mb-xl results-card">
-                
-                <Box className="results-header">
+              <Box className="card-glass mb-xl results-card" sx={{ borderColor: `${getThemeColor(analysisResult.extracted_data?.cancer_type)}50` }}>
+                <Box className="results-header" sx={{ bgcolor: `${getThemeColor(analysisResult.extracted_data?.cancer_type)}10`, borderBottomColor: `${getThemeColor(analysisResult.extracted_data?.cancer_type)}30` }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <AutoAwesomeIcon sx={{ color: '#00F0FF' }} />
+                    <AutoAwesomeIcon sx={{ color: getThemeColor(analysisResult.extracted_data?.cancer_type) }} />
                     <Typography className="results-title">AI-EXTRACTED STRUCTURED DATA</Typography>
                   </Box>
                 </Box>
 
                 <Box sx={{ p: 4 }}>
-                  <Grid container spacing={2} sx={{ alignItems: 'stretch' }}>
-                    {/* LEFT COL: BIOMARKERS */}
-                    <Grid item xs={12} md={5} sx={{ display: 'flex', flexDirection: 'column' }}>
-                      <Typography variant="overline" sx={{ color: '#00F0FF', display: 'block', mb: 2, fontSize: '1.1rem', fontWeight: 700, letterSpacing: '2px' }}>RECEPTOR STATUS</Typography>
-                      <ReceptorBadge label="ER" value={analysisResult.extracted_data?.ER} full="Estrogen Receptor" index={0} />
-                      <ReceptorBadge label="PR" value={analysisResult.extracted_data?.PR} full="Progesterone Receptor" index={1} />
-                      <ReceptorBadge label="HER2" value={analysisResult.extracted_data?.HER2} full="Human Epidermal Growth Factor" index={2} />
+                  <Grid container spacing={4}>
+                    <Grid item xs={12} md={5}>
+                      <Typography variant="overline" sx={{ color: getThemeColor(analysisResult.extracted_data?.cancer_type), display: 'block', mb: 2, fontSize: '1.1rem', fontWeight: 700, letterSpacing: '2px' }}>
+                        {analysisResult.extracted_data?.cancer_type?.toUpperCase()} BIOMARKERS
+                      </Typography>
+                      {renderMarkers(analysisResult.extracted_data?.cancer_type, analysisResult.extracted_data)}
                     </Grid>
 
                     <Grid item xs={false} md={1} sx={{ display: { xs: 'none', md: 'flex' }, justifyContent: 'center' }}>
                       <Divider orientation="vertical" sx={{ borderColor: 'rgba(255,255,255,0.1)', height: '100%' }} />
                     </Grid>
 
-                    {/* RIGHT COL: CLINICAL DETAILS */}
-                    <Grid item xs={12} md={6} sx={{ display: 'flex', flexDirection: 'column' }}>
-                      <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                        <Box sx={{ mb: 2 }}><Chip label={(analysisResult.extracted_data?.cancer_type || 'UNKNOWN').toUpperCase()} sx={{ bgcolor: '#00F0FF', color: '#000', fontFamily: '"Rajdhani"', fontWeight: 800, fontSize: '1rem', borderRadius: '4px', px: 1.5, height: '32px' }} /></Box>
-                        <ClinicalField label="Primary Diagnosis" value={analysisResult.extracted_data?.diagnosis} icon={<LocalHospitalIcon />} large />
-                        <Box sx={{ display: 'flex', gap: 6, mt: 1 }}>
-                                                  <Box>
-                                                    <Typography variant="caption" sx={{ color: '#64748B', fontFamily: '"Space Grotesk"', display: 'block', mb: 1, fontSize: '0.9rem', fontWeight: 700 }}>TNM STAGE</Typography>
-                                                    <Box sx={{ width: 75, height: 75, borderRadius: '50%', border: `3px solid #00F0FF`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 20px rgba(0, 240, 255, 0.5)` }}><Typography variant="h2" sx={{ fontFamily: '"Rajdhani"', fontWeight: 800, color: '#fff', fontSize: '2.2rem' }}>{analysisResult.extracted_data?.stage || '---'}</Typography></Box>
-                                                  </Box>
-                                                  <Box>
-                                                    <Typography variant="caption" sx={{ color: '#64748B', fontFamily: '"Space Grotesk"', display: 'block', mb: 1, fontSize: '0.9rem', fontWeight: 700 }}>GRADE</Typography>
-                                                    <Typography variant="h2" sx={{ fontFamily: '"Rajdhani"', fontWeight: 800, color: '#00F0FF', fontSize: '2.8rem', lineHeight: 1 }}>G2</Typography>
-                                                  </Box>                        </Box>
+                    <Grid item xs={12} md={6}>
+                      <Box sx={{ mb: 2 }}>
+                        <Chip label={(analysisResult.extracted_data?.cancer_type || 'UNKNOWN').toUpperCase()} sx={{ bgcolor: getThemeColor(analysisResult.extracted_data?.cancer_type), color: '#000', fontFamily: '"Rajdhani"', fontWeight: 800, px: 1.5 }} />
                       </Box>
+                      <ClinicalField label="Primary Diagnosis" value={analysisResult.extracted_data?.diagnosis} icon={<LocalHospitalIcon />} large color={getThemeColor(analysisResult.extracted_data?.cancer_type)} />
+                      
+                      <Grid container spacing={3}>
+                        <Grid item xs={6}>
+                          <Typography variant="caption" sx={{ color: '#64748B', display: 'block', mb: 1, fontWeight: 700 }}>
+                            {analysisResult.extracted_data?.cancer_type?.toLowerCase() === 'liver' ? 'BCLC STAGE' : 'TNM STAGE'}
+                          </Typography>
+                          <Typography variant="h3" sx={{ fontFamily: '"Rajdhani"', fontWeight: 800, color: '#fff', fontSize: '2.5rem' }}>
+                            {analysisResult.extracted_data?.stage || '---'}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <Typography variant="caption" sx={{ color: '#64748B', display: 'block', mb: 1, fontWeight: 700 }}>
+                            {analysisResult.extracted_data?.cancer_type?.toLowerCase() === 'brain' ? 'WHO GRADE' : 'GRADE'}
+                          </Typography>
+                          <Typography variant="h2" sx={{ fontFamily: '"Rajdhani"', fontWeight: 800, color: getThemeColor(analysisResult.extracted_data?.cancer_type), fontSize: '3rem' }}>{analysisResult.extracted_data?.grade || 'N/A'}</Typography>
+                        </Grid>
+                      </Grid>
                     </Grid>
                   </Grid>
                 </Box>
@@ -252,11 +299,11 @@ function Histopathology() {
 
           {!analysisResult && !uploading && (
             <div className="report-viewer report-viewer-card">
-              <h3 className="mb-lg" style={{ fontFamily: '"Rajdhani", sans-serif', color: '#fff' }}>Pathology Report</h3>
+              <h3 className="mb-lg" style={{ color: '#fff' }}>Pathology Report</h3>
               <div className="report-content">
-                <h2 className="report-header" style={{ fontFamily: '"Rajdhani", sans-serif' }}>SURGICAL PATHOLOGY REPORT</h2>
+                <h2 className="report-header">SURGICAL PATHOLOGY REPORT</h2>
                 <hr className="report-divider" />
-                <p style={{ fontFamily: '"Space Grotesk", sans-serif' }}><i>Upload a report to begin analysis. The original report content will be replaced by the AI's findings.</i></p>
+                <p><i>Upload a report to begin analysis.</i></p>
               </div>
             </div>
           )}

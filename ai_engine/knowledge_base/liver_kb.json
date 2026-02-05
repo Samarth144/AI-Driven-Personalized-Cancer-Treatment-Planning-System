@@ -1,15 +1,24 @@
 {
   "stages": {
     "EARLY": {
+      "primary_treatments": ["Surgical Resection or Ablation"],
       "local": ["Resection", "Ablation"],
-      "transplant": ["Eligible if Milan criteria"]
+      "transplant": ["Eligible if Milan criteria"],
+      "alternatives": ["Liver Transplantation", "Clinical Trial"],
+      "follow_up": ["Imaging (CT/MRI) q3-6m"]
     },
     "INTERMEDIATE": {
-      "local": ["TACE"]
+      "primary_treatments": ["Transarterial Chemoembolization (TACE)"],
+      "local": ["TACE"],
+      "alternatives": ["TARE (Y90)", "Systemic Therapy", "Clinical Trial"],
+      "follow_up": ["Imaging q3-6m"]
     },
     "ADVANCED": {
+      "primary_treatments": ["Systemic Combination (Atezolizumab + Bevacizumab)"],
       "systemic": ["Atezolizumab + Bevacizumab", "Sorafenib", "Lenvatinib"],
-      "viral": ["HBV/HCV treatment affects survival"]
+      "viral": ["HBV/HCV treatment affects survival"],
+      "alternatives": ["Durvalumab + Tremelimumab", "Cabozantinib", "Clinical Trial"],
+      "follow_up": ["Imaging q6-12w"]
     }
   }
 }

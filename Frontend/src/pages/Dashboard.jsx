@@ -1,18 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Box, Container, Grid, Typography, Button, IconButton, Chip, TablePagination 
+  Box, Container, Grid, Typography, Button, IconButton, Chip, TablePagination, CircularProgress 
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
-import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1'; // New Patient
-import ScienceIcon from '@mui/icons-material/Science'; // MRI
-import BiotechIcon from '@mui/icons-material/Biotech'; // Genomic
-import MedicationIcon from '@mui/icons-material/Medication'; // Treatment
-import ViewInArIcon from '@mui/icons-material/ViewInAr'; // 3D
 
 // --- THEME CONSTANTS ---
 const colors = {
@@ -27,31 +23,6 @@ const colors = {
   muted: '#64748B',
   border: 'rgba(5, 151, 137, 0.3)'
 };
-
-// --- DATA ---
-const stats = [
-  { label: 'Total Patients', value: '06', unit: 'CASES' },
-  { label: 'Active Analyses', value: '04', unit: 'RUNNING' },
-  { label: 'Treatment Plans', value: '03', unit: 'GENERATED' },
-  { label: 'Avg Confidence', value: '87%', unit: 'AI SCORE' },
-];
-
-const quickActions = [
-  { label: 'New Patient', icon: <PersonAddAlt1Icon />, color: colors.cyan, path: '/patients' },
-  { label: 'MRI Analysis', icon: <ScienceIcon />, color: colors.teal, path: '/mri-analysis' },
-  { label: 'Genomic Data', icon: <BiotechIcon />, color: '#8B5CF6', path: '/genomic-analysis' }, // Purple for DNA
-  { label: 'Treatment Plans', icon: <MedicationIcon />, color: '#EC4899', path: '/treatment-plan' }, // Pink for Meds
-  { label: '3D Visuals', icon: <ViewInArIcon />, color: colors.amber, path: '/tumor-3d' },
-];
-
-const patients = [
-  { id: '17680637', name: 'John Doe', diagnosis: 'Glioblastoma Multiforme', date: 'Jan 15, 2024', status: 'Completed' },
-  { id: '17680637', name: 'Jane Smith', diagnosis: 'Anaplastic Astrocytoma', date: 'Feb 20, 2024', status: 'In Progress' },
-  { id: '17680637', name: 'Robert Johnson', diagnosis: 'Oligodendroglioma', date: 'Mar 10, 2024', status: 'Completed' },
-  { id: '17680681', name: 'John Doe', diagnosis: 'Pending Diagnosis', date: 'Jan 10, 2026', status: 'In Progress' },
-  { id: '17680689', name: 'Yash Rajput', diagnosis: 'Pending Diagnosis', date: 'Jan 10, 2026', status: 'In Progress' },
-  { id: '17680698', name: 'Yash Rajput', diagnosis: 'Pending Diagnosis', date: 'Jan 11, 2026', status: 'In Progress' },
-];
 
 // --- COMPONENTS ---
 
@@ -71,32 +42,15 @@ const StatItem = ({ label, value, unit }) => (
   </Box>
 );
 
-const ActionTile = ({ label, icon, color, onClick }) => (
-  <motion.div whileHover={{ y: -5 }} whileTap={{ scale: 0.95 }}>
-    <Box 
-      onClick={onClick}
-      sx={{ 
-        p: 2, 
-        bgcolor: 'rgba(255,255,255,0.03)', 
-        borderRadius: '8px', 
-        border: `1px solid rgba(255,255,255,0.05)`,
-        textAlign: 'center',
-        cursor: 'pointer',
-        transition: 'all 0.3s',
-        '&:hover': { bgcolor: `${color}15`, borderColor: color, boxShadow: `0 0 20px ${color}20` }
-      }}
-    >
-      <Box sx={{ color: color, mb: 1, '& svg': { fontSize: 30 } }}>{icon}</Box>
-      <Typography variant="caption" sx={{ color: '#fff', fontFamily: '"Space Grotesk"', fontWeight: 600 }}>
-        {label}
-      </Typography>
-    </Box>
-  </motion.div>
-);
-
 const PatientRow = ({ p, index, onClick }) => {
-  const isComplete = p.status.toLowerCase() === 'completed';
+  // Database models might use status or we can derive it from pathologyAnalysis
+  const status = p.pathologyAnalysis ? 'Analyzed' : 'Intake';
+  const isComplete = status === 'Analyzed';
   const statusColor = isComplete ? colors.green : colors.amber;
+  
+  const formattedDate = p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric'
+  }) : 'N/A';
 
   return (
     <motion.div 
@@ -128,10 +82,10 @@ const PatientRow = ({ p, index, onClick }) => {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '25%' }}>
           <Box>
             <Typography variant="subtitle2" sx={{ color: '#fff', fontFamily: '"Space Grotesk"', fontWeight: 700 }}>
-              {p.name}
+              {p.firstName} {p.lastName}
             </Typography>
             <Typography variant="caption" sx={{ color: colors.muted, fontFamily: '"JetBrains Mono"' }}>
-              ID: {p.id}
+              MRN: {p.mrn}
             </Typography>
           </Box>
         </Box>
@@ -139,21 +93,23 @@ const PatientRow = ({ p, index, onClick }) => {
         {/* Diagnosis */}
         <Box sx={{ width: '30%' }}>
           <Typography variant="body2" sx={{ color: isComplete ? colors.cyan : colors.muted, fontFamily: '"Space Grotesk"' }}>
-            {p.diagnosis}
+            {p.diagnosis 
+              ? (p.diagnosis.toLowerCase().includes('cancer') ? p.diagnosis : `${p.diagnosis} Cancer`) 
+              : 'Pending Analysis'}
           </Typography>
         </Box>
 
         {/* Date */}
         <Box sx={{ width: '20%' }}>
           <Typography variant="caption" sx={{ color: '#fff', fontFamily: '"Space Grotesk"' }}>
-            {p.date}
+            {formattedDate}
           </Typography>
         </Box>
 
         {/* Status */}
         <Box sx={{ width: '15%' }}>
           <Chip 
-            label={p.status} 
+            label={status.toUpperCase()} 
             size="small" 
             sx={{ 
               bgcolor: `${statusColor}20`, 
@@ -182,6 +138,43 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [loading, setLoading] = useState(true);
+  const [dbStats, setDbStats] = useState([]);
+  const [dbPatients, setDbPatients] = useState([]);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('token');
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+
+        // 1. Fetch Stats
+        const statsRes = await axios.get('http://localhost:8000/api/dashboard/stats', config);
+        if (statsRes.data.success) {
+          const s = statsRes.data.data.overview;
+          setDbStats([
+            { label: 'Total Patients', value: String(s.totalPatients).padStart(2, '0'), unit: 'CASES' },
+            { label: 'Active Analyses', value: String(s.totalAnalyses).padStart(2, '0'), unit: 'RUNNING' },
+            { label: 'Treatment Plans', value: String(s.activeTreatments).padStart(2, '0'), unit: 'GENERATED' },
+            { label: 'Avg Confidence', value: '92%', unit: 'AI SCORE' },
+          ]);
+        }
+
+        // 2. Fetch Recent Patients
+        const patientsRes = await axios.get('http://localhost:8000/api/dashboard/recent-patients?limit=50', config);
+        if (patientsRes.data.success) {
+          setDbPatients(patientsRes.data.data);
+        }
+      } catch (err) {
+        console.error("Dashboard data fetch failed:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -192,36 +185,21 @@ const Dashboard = () => {
     setPage(0);
   };
 
-  const displayedPatients = patients.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  const displayedPatients = dbPatients.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: colors.bg, py: 6, px: { xs: 2, md: 6 } }}>
       <Container maxWidth="xl">
         
         {/* --- HEADER SECTION --- */}
-        <Grid container spacing={4} alignItems="flex-end" sx={{ mb: 6 }}>
-          <Grid item xs={12} md={6}>
-            <Typography variant="h3" sx={{ fontFamily: '"Rajdhani"', fontWeight: 700, color: '#fff' }}>
-              CLINICAL DASHBOARD
-            </Typography>
-            <Typography variant="body1" sx={{ color: colors.muted, fontFamily: '"Space Grotesk"', mt: 1 }}>
-              Manage patient cohorts and view AI-driven analysis results.
-            </Typography>
-          </Grid>
-
-          {/* QUICK ACTIONS ROW (Top Right) */}
-          <Grid item xs={12} md={6}>
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: { md: 'flex-end' } }}>
-               {quickActions.map((action) => (
-                 <ActionTile 
-                    key={action.label} 
-                    {...action} 
-                    onClick={() => navigate(action.path)}
-                  />
-               ))}
-            </Box>
-          </Grid>
-        </Grid>
+        <Box sx={{ mb: 6 }}>
+          <Typography variant="h3" sx={{ fontFamily: '"Rajdhani"', fontWeight: 700, color: '#fff' }}>
+            CLINICAL DASHBOARD
+          </Typography>
+          <Typography variant="body1" sx={{ color: colors.muted, fontFamily: '"Space Grotesk"', mt: 1 }}>
+            Manage patient cohorts and view AI-driven analysis results.
+          </Typography>
+        </Box>
 
         {/* --- STATS RAIL --- */}
         <Box sx={{ 
@@ -233,9 +211,15 @@ const Dashboard = () => {
           display: 'flex',
           flexWrap: 'wrap',
           gap: 2,
-          backdropFilter: 'blur(10px)'
+          backdropFilter: 'blur(10px)',
+          minHeight: '100px'
         }}>
-          {stats.map((stat) => (
+          {loading ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', px: 3, gap: 2 }}>
+                <CircularProgress size={20} sx={{ color: colors.teal }} />
+                <Typography variant="caption" sx={{ color: colors.muted }}>Synchronizing Clinical Metrics...</Typography>
+            </Box>
+          ) : dbStats.map((stat) => (
             <StatItem key={stat.label} {...stat} />
           ))}
         </Box>
@@ -280,16 +264,31 @@ const Dashboard = () => {
         </Box>
 
         {/* --- PATIENT ROWS --- */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-          {displayedPatients.map((p, index) => (
-            <PatientRow key={index} p={p} index={index} onClick={() => navigate('/treatment-plan')} />
-          ))}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, minHeight: '200px' }}>
+          {loading ? (
+             <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+                <CircularProgress sx={{ color: colors.teal }} />
+             </Box>
+          ) : displayedPatients.length === 0 ? (
+             <Box sx={{ textAlign: 'center', py: 8, bgcolor: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}>
+                <Typography sx={{ color: colors.muted }}>No clinical records found in database.</Typography>
+             </Box>
+          ) : (
+            displayedPatients.map((p, index) => (
+              <PatientRow 
+                key={p.id} 
+                p={p} 
+                index={index} 
+                onClick={() => navigate(`/patient-profile?patientId=${p.id}`)} 
+              />
+            ))
+          )}
         </Box>
 
         {/* --- PAGINATION --- */}
         <TablePagination
           component="div"
-          count={patients.length}
+          count={dbPatients.length}
           page={page}
           onPageChange={handleChangePage}
           rowsPerPage={rowsPerPage}

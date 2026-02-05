@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import './OutcomePrediction.css';
 import {
   Chart as ChartJS,
@@ -44,6 +44,8 @@ import ViewInArIcon from '@mui/icons-material/ViewInAr';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import EditIcon from '@mui/icons-material/Edit';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import TimelineIcon from '@mui/icons-material/Timeline';
 import axios from 'axios';
 
 
@@ -159,6 +161,95 @@ const getECOGDescription = (val) => {
   return desc[val] || "";
 };
 
+const PredictionGaugeCard = ({ title, value, unit, rangeText, color, icon, confidence = 92, maxScale = 60 }) => {
+  const percentage = Math.min(100, (value / maxScale) * 100);
+  const strokeDasharray = 440; // Approx circumference for r=70
+  const strokeDashoffset = strokeDasharray - (strokeDasharray * percentage) / 100;
+
+  return (
+    <Box className="prediction-card-gauge">
+      {/* Background Decorator */}
+      <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', bgcolor: color }} />
+
+      {/* HEADER */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+        {React.cloneElement(icon, { sx: { color: color, fontSize: 20 } })}
+        <Typography variant="overline" sx={{ fontFamily: '"Rajdhani"', fontWeight: 700, color: '#94A3B8', letterSpacing: '2px', fontSize: '0.85rem' }}>
+          {title}
+        </Typography>
+      </Box>
+
+      {/* --- THE GAUGE --- */}
+      <Box sx={{ position: 'relative', width: 160, height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>
+        
+        {/* 1. Outer Static Ring */}
+        <Box sx={{ 
+          position: 'absolute', inset: 0, borderRadius: '50%', 
+          border: '10px solid rgba(255,255,255,0.03)' 
+        }} />
+
+        {/* 2. Dynamic Progress Ring (SVG) */}
+        <svg width="160" height="160" style={{ transform: 'rotate(-90deg)', position: 'absolute' }}>
+          <motion.circle
+            cx="80" cy="80" r="70"
+            stroke={color}
+            strokeWidth="10"
+            fill="transparent"
+            strokeDasharray={strokeDasharray}
+            initial={{ strokeDashoffset: strokeDasharray }}
+            animate={{ strokeDashoffset: strokeDashoffset }}
+            transition={{ duration: 1.5, ease: "easeOut" }}
+            strokeLinecap="round"
+          />
+        </svg>
+
+        {/* 3. The Number Display */}
+        <Box sx={{ textAlign: 'center', zIndex: 2 }}>
+          <Typography variant="h2" sx={{ fontFamily: '"Rajdhani"', fontWeight: 700, color: '#fff', lineHeight: 0.8, fontSize: '3.5rem' }}>
+            {value || '--'}
+          </Typography>
+          <Typography variant="caption" sx={{ fontFamily: '"Space Grotesk"', color: '#64748B', display: 'block', mt: 0.5, fontWeight: 600, letterSpacing: '1px' }}>
+            {unit}
+          </Typography>
+        </Box>
+
+        {/* 4. Pulse Animation (The Heartbeat) */}
+        <motion.div
+          animate={{ scale: [1, 1.15, 1], opacity: [0.05, 0.15, 0.05] }}
+          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          style={{
+            position: 'absolute', inset: 0, borderRadius: '50%',
+            background: `radial-gradient(circle, ${color} 0%, transparent 70%)`,
+            zIndex: 1
+          }}
+        />
+      </Box>
+
+      {/* RANGE / CONTEXT */}
+      <Typography sx={{ fontFamily: '"Space Grotesk"', fontSize: '0.85rem', color: '#94A3B8', textAlign: 'center', mb: 2 }}>
+        {rangeText}
+      </Typography>
+
+      {/* FOOTER METRIC */}
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: 1, 
+        px: 2, 
+        py: 0.5, 
+        borderRadius: '20px', 
+        bgcolor: 'rgba(255, 255, 255, 0.03)', 
+        border: `1px solid rgba(255, 255, 255, 0.05)` 
+      }}>
+        <AccessTimeIcon sx={{ fontSize: 14, color: color }} />
+        <Typography variant="caption" sx={{ color: '#94A3B8', fontFamily: '"Rajdhani"', fontWeight: 700, fontSize: '0.75rem' }}>
+          CONFIDENCE: {confidence}%
+        </Typography>
+      </Box>
+    </Box>
+  );
+};
+
 
 ChartJS.register(
   CategoryScale,
@@ -175,10 +266,11 @@ ChartJS.register(
 
 function OutcomePrediction() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(false);
   const [outcomeData, setOutcomeData] = useState(null);
-  const [evidence, setEvidence] = useState([]);
   const [formattedSideEffects, setFormattedSideEffects] = useState('');
+  const [confidence, setConfidence] = useState(92);
   const [formData, setFormData] = useState({ 
     name: '', dob: '', gender: '', mrn: '', contact: '', diagnosisDate: '', pathologyReport: '', pathologyFile: null,
     cancerType: 'Brain',
@@ -190,20 +282,118 @@ function OutcomePrediction() {
 
   const handleChange = (field, value) => setFormData({ ...formData, [field]: value });
 
-  const generatePredictions = async () => {
+  const generatePredictions = useCallback(async (customData = null) => {
     setLoading(true);
     setFormattedSideEffects('');
     try {
-      // Updated to call the new backend endpoint
-      const response = await axios.post('/api/outcomes/predict-formatted', formData);
-      setOutcomeData(response.data.data);
-      setEvidence(response.data.data.evidence || []);
-      setFormattedSideEffects(response.data.data.formattedSideEffects || '');
+      const token = localStorage.getItem('token');
+      const payload = customData || formData;
+      const response = await axios.post('http://localhost:8000/api/outcomes/predict-formatted', payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const resData = response.data.data;
+      setOutcomeData(resData);
+      setFormattedSideEffects(resData.formattedSideEffects || '');
+      setConfidence(resData.confidence || 92);
     } catch (error) {
       console.error('Error generating predictions:', error);
     } finally {
       setLoading(false);
     }
+  }, [formData]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const pid = params.get('patientId');
+    
+    if (pid) {
+        const fetchPatient = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const res = await axios.get(`http://localhost:8000/api/patients/${pid}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                
+                if (res.data.success) {
+                    const p = res.data.data;
+                    const pathData = p.pathologyAnalysis?.extracted_data || {};
+                    const type = p.cancerType || 'Brain';
+                    
+                    const newData = {
+                        ...formData,
+                        name: `${p.firstName} ${p.lastName}`,
+                        mrn: p.mrn,
+                        dob: p.dob ? p.dob.split('T')[0] : '',
+                        gender: p.gender?.toLowerCase() || '',
+                        cancerType: type,
+                        kps: p.kps || 100,
+                        ecog: p.ecog || 0,
+                        symptoms: Array.isArray(p.symptoms) ? p.symptoms.join(',') : (p.symptoms || ''),
+                        comorbidities: Array.isArray(p.comorbidities) ? p.comorbidities.join(',') : (p.comorbidities || '')
+                    };
+
+                    // Map Genomic Markers
+                    if (type === 'Brain') {
+                        if (pathData.MGMT) newData.mgmt = pathData.MGMT;
+                        if (pathData.IDH1) newData.idh1 = pathData.IDH1;
+                    } else if (type === 'Breast') {
+                        if (pathData.ER) newData.er = pathData.ER;
+                        if (pathData.PR) newData.pr = pathData.PR;
+                        if (pathData.HER2) newData.her2 = pathData.HER2;
+                        if (pathData.BRCA) newData.brca = pathData.BRCA;
+                    } else if (type === 'Lung') {
+                        if (pathData.EGFR) newData.egfr = pathData.EGFR;
+                        if (pathData.ALK) newData.alk = pathData.ALK;
+                        if (pathData.PDL1) newData.pdl1 = pathData.PDL1;
+                        if (pathData.KRAS) newData.kras = pathData.KRAS;
+                    } else if (type === 'Liver') {
+                        if (pathData.AFP) newData.afp = pathData.AFP;
+                    }
+                    
+                    setFormData(newData);
+                    // Automatically trigger predictions
+                    generatePredictions(newData);
+                }
+            } catch (err) {
+                console.error("Error loading patient data:", err);
+            }
+        };
+        fetchPatient();
+    }
+  }, [location.search]);
+
+  const formatMarkdown = (text) => {
+    if (!text) return null;
+    const lines = text.split('\n');
+    return lines.map((line, index) => {
+      let trimmedLine = line.trim();
+      if (trimmedLine.startsWith('* ') || trimmedLine.startsWith('- ')) {
+        return (
+          <li key={index} style={{ marginBottom: '0.5rem', listStyleType: 'disc', marginLeft: '1.5rem', color: '#cbd5e1' }}>
+            {parseBold(trimmedLine.substring(2))}
+          </li>
+        );
+      }
+      if (trimmedLine.startsWith('**') && trimmedLine.endsWith('**')) {
+          return <h5 key={index} style={{ color: '#00F0FF', marginTop: '1rem', marginBottom: '0.5rem' }}>{trimmedLine.replace(/\*\*/g, '')}</h5>;
+      }
+      return (
+        <p key={index} style={{ marginBottom: '1rem', color: '#cbd5e1' }}>
+          {parseBold(trimmedLine)}
+        </p>
+      );
+    });
+  };
+
+  const parseBold = (text) => {
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i} style={{ color: '#fff' }}>{part.replace(/\*\*/g, '')}</strong>;
+      }
+      return part;
+    });
   };
 
   const downloadReport = () => {
@@ -211,28 +401,41 @@ function OutcomePrediction() {
   };
 
   // Chart Data Configurations
-  const months = Array.from({ length: 61 }, (_, i) => i);
-  const survivalChartData = {
-    labels: months,
-    datasets: [
-      {
-        label: 'Overall Survival',
-        data: months.map(m => 100 * Math.exp(-0.03 * m)),
-        borderColor: 'hsl(210, 100%, 56%)',
-        backgroundColor: 'hsla(210, 100%, 56%, 0.1)',
-        fill: true,
-        tension: 0.4
-      },
-      {
-        label: 'Progression-Free Survival',
-        data: months.map(m => 100 * Math.exp(-0.05 * m)),
-        borderColor: 'hsl(180, 65%, 55%)',
-        backgroundColor: 'hsla(180, 65%, 55%, 0.1)',
-        fill: true,
-        tension: 0.4
-      }
-    ]
-  };
+  const monthsArr = Array.from({ length: 61 }, (_, i) => i);
+  
+  const survivalChartData = useMemo(() => {
+    // Standard decay formula: S(t) = exp(-k * t)
+    // k = ln(2) / median
+    const osMedian = outcomeData?.overallSurvival?.median || 24;
+    const pfsMedian = outcomeData?.progressionFreeSurvival?.median || 12;
+    
+    const k_os = 0.693 / osMedian;
+    const k_pfs = 0.693 / pfsMedian;
+
+    return {
+      labels: monthsArr,
+      datasets: [
+        {
+          label: 'Overall Survival',
+          data: monthsArr.map(m => 100 * Math.exp(-k_os * m)),
+          borderColor: '#6366F1',
+          backgroundColor: 'rgba(99, 102, 241, 0.1)',
+          fill: true,
+          tension: 0.4,
+          pointRadius: 0
+        },
+        {
+          label: 'Progression-Free Survival',
+          data: monthsArr.map(m => 100 * Math.exp(-k_pfs * m)),
+          borderColor: '#14B8A6',
+          backgroundColor: 'rgba(20, 184, 166, 0.1)',
+          fill: true,
+          tension: 0.4,
+          pointRadius: 0
+        }
+      ]
+    };
+  }, [outcomeData, monthsArr]);
 
   const survivalChartOptions = {
     responsive: true,
@@ -256,234 +459,124 @@ function OutcomePrediction() {
     }
   };
 
-  const riskChartData = {
-    labels: ['Low Risk', 'Moderate Risk', 'High Risk'],
-    datasets: [{
-      data: [25, 45, 30],
-      backgroundColor: [
-        'hsla(142, 70%, 55%, 0.8)',
-        'hsla(45, 95%, 60%, 0.8)',
-        'hsla(0, 75%, 60%, 0.8)'
+  const riskChartData = useMemo(() => {
+    const risk = outcomeData?.riskStratification || { low: 25, moderate: 45, high: 30 };
+    return {
+      labels: ['Low Risk', 'Moderate Risk', 'High Risk'],
+      datasets: [{
+        data: [risk.low, risk.moderate, risk.high],
+        backgroundColor: [
+          'hsla(142, 70%, 55%, 0.8)',
+          'hsla(45, 95%, 60%, 0.8)',
+          'hsla(0, 75%, 60%, 0.8)'
+        ]
+      }]
+    };
+  }, [outcomeData]);
+
+  const factorsChartData = useMemo(() => {
+    const factors = outcomeData?.prognosticFactors || { "Age": 65, "KPS": 85, "Biomarkers": 90, "Clinical Data": 75 };
+    
+    return {
+      labels: Object.keys(factors),
+      datasets: [{
+        label: 'Impact on Prognosis',
+        data: Object.values(factors),
+        backgroundColor: 'hsla(270, 70%, 60%, 0.8)',
+        borderRadius: 8
+      }]
+    };
+  }, [outcomeData]);
+
+  const timelineChartData = useMemo(() => {
+    const projection = outcomeData?.timelineProjection || {
+        "months": ["Baseline", "3 mo", "6 mo", "12 mo", "18 mo", "24 mo"],
+        "response_indicator": [100, 40, 35, 45, 55, 65],
+        "quality_of_life": [75, 70, 73, 67, 63, 60]
+    };
+
+    return {
+      labels: projection.months,
+      datasets: [
+        {
+          label: 'Response Indicator',
+          data: projection.response_indicator,
+          borderColor: 'hsl(0, 75%, 60%)',
+          backgroundColor: 'hsla(0, 75%, 60%, 0.1)',
+          fill: true,
+          tension: 0.4
+        },
+        {
+          label: 'Quality of Life',
+          data: projection.quality_of_life,
+          borderColor: 'hsl(142, 70%, 55%)',
+          backgroundColor: 'hsla(142, 70%, 55%, 0.1)',
+          fill: true,
+          tension: 0.4
+        }
       ]
-    }]
-  };
-
-  const factorsChartData = {
-    labels: ['Age', 'KPS', 'Tumor Size', 'MGMT', 'IDH1', 'Location'],
-    datasets: [{
-      label: 'Impact on Prognosis',
-      data: [65, 85, 75, 90, 80, 70],
-      backgroundColor: 'hsla(270, 70%, 60%, 0.8)',
-      borderRadius: 8
-    }]
-  };
-
-  const timelineChartData = {
-    labels: ['Baseline', '3 mo', '6 mo', '12 mo', '18 mo', '24 mo'],
-    datasets: [
-      {
-        label: 'Tumor Volume',
-        data: [100, 40, 35, 45, 50, 55],
-        borderColor: 'hsl(0, 75%, 60%)',
-        backgroundColor: 'hsla(0, 75%, 60%, 0.1)',
-        fill: true,
-        tension: 0.4
-      },
-      {
-        label: 'Quality of Life',
-        data: [75, 65, 70, 68, 65, 63],
-        borderColor: 'hsl(142, 70%, 55%)',
-        backgroundColor: 'hsla(142, 70%, 55%, 0.1)',
-        fill: true,
-        tension: 0.4
-      }
-    ]
-  };
+    };
+  }, [outcomeData]);
 
   return (
     <>
       <div className="container outcome-container">
-        <div className="form-terminal">
-          <div className="terminal-header">
-            <Typography variant="h5">Patient Information</Typography>
-          </div>
-          <Grid container spacing={4}>
-            <Grid item xs={12} md={9}>
-              <div className="form-inputs-col">
-                <TextField fullWidth label="Full Legal Name" variant="outlined" className="tech-input fixed-width"
-                  value={formData.name} onChange={(e) => handleChange('name', e.target.value)}
-                  InputProps={{ startAdornment: <InputAdornment position="start"><BadgeOutlinedIcon /></InputAdornment> }}
-                />
-                <TextField fullWidth label="Medical Record Number (MRN)" placeholder="e.g. MR-2026-X" className="tech-input fixed-width"
-                  value={formData.mrn} onChange={(e) => handleChange('mrn', e.target.value)}
-                  InputProps={{ startAdornment: <InputAdornment position="start"><NumbersOutlinedIcon /></InputAdornment> }}
-                />
-                <TextField fullWidth label="Contact Number" placeholder="e.g. 9876543210" className="tech-input fixed-width"
-                  value={formData.contact} onChange={(e) => handleChange('contact', e.target.value)}
-                  InputProps={{ startAdornment: <InputAdornment position="start"><LocalPhoneOutlinedIcon /></InputAdornment> }}
-                />
-                <Grid container spacing={3}>
-                  <Grid item xs={6}>
-                    <TextField fullWidth type="date" label="Date of Birth" className="tech-input fixed-width"
-                      value={formData.dob} onChange={(e) => handleChange('dob', e.target.value)}
-                      InputLabelProps={{ shrink: true }}
-                      InputProps={{ startAdornment: <InputAdornment position="start"><CalendarMonthOutlinedIcon /></InputAdornment> }}
-                    />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <TextField fullWidth type="date" label="Date of Diagnosis" className="tech-input fixed-width"
-                      value={formData.diagnosisDate} onChange={(e) => handleChange('diagnosisDate', e.target.value)}
-                      InputLabelProps={{ shrink: true }}
-                      InputProps={{ startAdornment: <InputAdornment position="start"><EventAvailableOutlinedIcon /></InputAdornment> }}
-                    />
-                  </Grid>
-                </Grid>
-              </div>
-            </Grid>
-            <Grid item xs={12} md={3}>
-              <Typography className="field-label">Biological Sex / Gender</Typography>
-              <div className="gender-selection-col">
-                <GenderTile label="MALE" icon={<MaleIcon />} selected={formData.gender === 'male'} onClick={() => handleChange('gender', 'male')} />
-                <GenderTile label="FEMALE" icon={<FemaleIcon />} selected={formData.gender === 'female'} onClick={() => handleChange('gender', 'female')} />
-                <GenderTile label="OTHER" icon={<TransgenderIcon />} selected={formData.gender === 'other'} onClick={() => handleChange('gender', 'other')} />
-              </div>
-            </Grid>
-          </Grid>
-        </div>
-
-        <div className="form-terminal">
-          <div className="terminal-header">
-            <Typography variant="h5">Genomic Decoder</Typography>
-          </div>
-          <Box sx={{ mb: 4 }}>
-            <Typography className="field-label" sx={{ mb: 2 }}>SELECT CANCER TYPE FOR SPECIALIZED SEGMENTATION</Typography>
-            <div className="cancer-type-selector">
-              {['Brain', 'Breast', 'Liver', 'Pancreas', 'Lung'].map((type) => (
-                <motion.div key={type} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Button
-                    variant={formData.cancerType === type ? "contained" : "outlined"}
-                    onClick={() => handleChange('cancerType', type)}
-                    className={`tech-btn-choice ${formData.cancerType === type ? 'active' : ''}`}
-                    sx={{ minWidth: '120px' }}
-                  >
-                    {type}
-                  </Button>
-                </motion.div>
-              ))}
-            </div>
-          </Box>
-          <Grid container spacing={3}>
-            {(GENOMIC_MARKERS[formData.cancerType] || GENOMIC_MARKERS.Brain).map((m) => (
-              <Grid item xs={12} key={m.id}>
-                <MolecularSwitch 
-                  label={m.label} sub={m.sub} icon={m.icon} options={m.options} 
-                  value={formData[m.id]} onChange={(val) => handleChange(m.id, val)}
-                />
-              </Grid>
-            ))}
-          </Grid>
-        </div>
-
-        <div className="form-terminal">
-          <div className="terminal-header">
-            <Typography variant="h5">Clinical History</Typography>
-          </div>
-          <Grid container spacing={2} className="performance-grid">
-            <Grid item xs={12} md={3}>
-              <div className="performance-terminal-box" style={{ '--kps-color': getKPSColor(formData.kps) }}>
-                <div className="score-header">
-                  <Typography className="kps-label">KPS Score</Typography>
-                  <Typography className="kps-value">{formData.kps}%</Typography>
-                </div>
-                <Slider
-                  value={formData.kps}
-                  onChange={(_, val) => handleChange('kps', val)}
-                  step={10} marks min={0} max={100}
-                  className="tech-slider"
-                />
-                <Typography variant="caption" className="score-desc">
-                  <span>{formData.kps >= 80 ? "Normal" : formData.kps >= 50 ? "Assisted" : "Hosp."}</span>
-                </Typography>
-              </div>
-            </Grid>
-
-            <Grid item xs={12} md={3}>
-              <div className="performance-terminal-box">
-                <Typography className="ecog-label">ECOG Score (0-4)</Typography>
-                <div className="ecog-selector">
-                  {[0, 1, 2, 3, 4].map((score) => (
-                    <Button key={score} onClick={() => handleChange('ecog', score)}
-                      className={`ecog-btn ${formData.ecog === score ? 'active' : ''}`}>
-                      {score}
-                    </Button>
-                  ))}
-                </div>
-                <Typography variant="caption" className="ecog-desc-text">
-                  {getECOGDescription(formData.ecog).substring(0, 30)}...
-                </Typography>
-              </div>
-            </Grid>
-
-            <Grid item xs={12} md={3}>
-              <TagInput 
-                label="SYMPTOMS" icon={<MedicalServicesIcon />}
-                tags={formData.symptoms ? formData.symptoms.split(',').filter(s => s) : []}
-                onAdd={(t) => handleChange('symptoms', formData.symptoms ? `${formData.symptoms},${t}` : t)}
-                onDelete={(t) => handleChange('symptoms', formData.symptoms.split(',').filter(x => x !== t).join(','))}
-              />
-            </Grid>
-            <Grid item xs={12} md={3}>
-              <TagInput 
-                label="COMORBIDITIES" icon={<FavoriteBorderIcon />}
-                tags={formData.comorbidities ? formData.comorbidities.split(',').filter(s => s) : []}
-                onAdd={(t) => handleChange('comorbidities', formData.comorbidities ? `${formData.comorbidities},${t}` : t)}
-                onDelete={(t) => handleChange('comorbidities', formData.comorbidities.split(',').filter(x => x !== t).join(','))}
-              />
-            </Grid>
-          </Grid>
-        </div>
-
-        <div className="flex justify-between items-center mb-xl">
+        <div className="flex justify-between items-center mb-xl" style={{ marginTop: '2rem' }}>
           <div>
-            <h1>Outcome & Toxicity Prediction</h1>
-            <p className="text-secondary">AI-powered survival forecasting and side-effect modeling</p>
+            <Typography variant="h4" className="page-title">
+              Outcome & Toxicity Prediction
+            </Typography>
+            <Typography variant="body2" className="page-subtitle">
+              Multimodal AI-powered survival forecasting and toxicity modeling.
+            </Typography>
           </div>
-          <button className="btn btn-primary" onClick={generatePredictions} disabled={loading}>
-            {loading ? 'Generating...' : '📈 Generate Predictions'}
-          </button>
+          {loading && <div className="text-secondary" style={{ fontFamily: '"Space Grotesk"' }}>Engine is calculating projections...</div>}
         </div>
+
+        {!outcomeData && !loading && (
+            <div className="card-glass text-center" style={{ padding: '4rem' }}>
+                <ErrorOutlineIcon sx={{ fontSize: 48, color: '#64748B', mb: 2 }} />
+                <Typography variant="h6" sx={{ color: '#94A3B8' }}>No Patient Data Linked</Typography>
+                <Typography variant="body2" sx={{ color: '#64748B' }}>Please access this page from a valid patient profile to view predictions.</Typography>
+            </div>
+        )}
 
         {outcomeData && (
           <>
             {/* Key Predictions */}
             <div className="prediction-grid">
-              <div className="prediction-card survival-gauge-high">
-                <h3 className="card-title-white">Overall Survival</h3>
-                <div className="prediction-value">
-                  {loading ? '--' : outcomeData?.overallSurvival?.median}
-                </div>
-                <div className="prediction-range">
-                  {loading ? 'Median months' : `Range: ${outcomeData?.overallSurvival?.range[0]}-${outcomeData?.overallSurvival?.range[1]} months`}
-                </div>
-              </div>
+              <PredictionGaugeCard 
+                title="OVERALL SURVIVAL"
+                value={loading ? 0 : (outcomeData?.overallSurvival?.median || 0)}
+                unit="MONTHS"
+                rangeText={loading ? "Calculating..." : `Typical Range: ${outcomeData?.overallSurvival?.range[0]}-${outcomeData?.overallSurvival?.range[1]} months`}
+                color="#6366F1"
+                icon={<TimelineIcon />}
+                confidence={confidence}
+                maxScale={60}
+              />
 
-              <div className="prediction-card prediction-card-accent survival-gauge-high">
-                <h3 className="card-title-white">Progression-Free Survival</h3>
-                <div className="prediction-value">
-                  {loading ? '--' : outcomeData?.progressionFreeSurvival?.median}
-                </div>
-                <div className="prediction-range">
-                  {loading ? 'Median months' : `Range: ${outcomeData?.progressionFreeSurvival?.range[0]}-${outcomeData?.progressionFreeSurvival?.range[1]} months`}
-                </div>
-              </div>
+              <PredictionGaugeCard 
+                title="PROGRESSION-FREE SURVIVAL"
+                value={loading ? 0 : (outcomeData?.progressionFreeSurvival?.median || 0)}
+                unit="MONTHS"
+                rangeText={loading ? "Calculating..." : `Typical Range: ${outcomeData?.progressionFreeSurvival?.range[0]}-${outcomeData?.progressionFreeSurvival?.range[1]} months`}
+                color="#14B8A6"
+                icon={<TimelineIcon />}
+                confidence={Math.round(confidence * 0.96)}
+                maxScale={48}
+              />
 
-              <div className="prediction-card prediction-card-warm">
-                <h3 className="card-title-white">Quality of Life</h3>
-                <div className="prediction-value">
-                  {loading ? '--' : outcomeData?.qualityOfLife}
-                </div>
-                <div className="prediction-range">Predicted score (0-100)</div>
-              </div>
+              <PredictionGaugeCard 
+                title="QUALITY OF LIFE"
+                value={loading ? 0 : (outcomeData?.qualityOfLife || 0)}
+                unit="SCORE"
+                rangeText="Projected Patient-Reported Score"
+                color="#F59E0B"
+                icon={<FavoriteBorderIcon />}
+                confidence={Math.round(confidence * 0.92)}
+                maxScale={100}
+              />
             </div>
 
             {/* Survival Curves */}
@@ -497,13 +590,12 @@ function OutcomePrediction() {
             {/* Side Effects Prediction */}
             <div className="card-glass mb-xl">
               <h3>Predicted Side Effects & Toxicity</h3>
-              <p className="text-secondary mb-lg">AI-generated summary of potential treatment-related adverse events.</p>
 
               {loading ? (
                   <div className="text-secondary">Calculating risks...</div>
               ) : formattedSideEffects ? (
-                  <div className="evidence-section">
-                      <p className="text-secondary" style={{ whiteSpace: 'pre-wrap', fontSize: '1rem' }}>{formattedSideEffects}</p>
+                  <div className="side-effects-summary-box">
+                      {formatMarkdown(formattedSideEffects)}
                   </div>
               ) : (
                 <div className="side-effects-grid">
@@ -570,36 +662,16 @@ function OutcomePrediction() {
           </div>
         </div>
 
-        {/* Evidence Section */}
-        {evidence.length > 0 && (
-          <div className="card-glass mb-xl">
-            <details>
-              <summary style={{ cursor: 'pointer', color: 'white' }}>
-                <h3>Evidence from Literature</h3>
-                <p className="text-secondary mb-lg">Sources used for prediction (click to expand)</p>
-              </summary>
-              <div className="evidence-grid">
-                {evidence.map((item, index) => (
-                  <div key={index} className="evidence-card">
-                    <p className="evidence-text">{item.text}</p>
-                    <p className="evidence-source">{item.source} - Page {item.page}</p>
-                  </div>
-                ))}
-              </div>
-            </details>
-          </div>
-        )}
-
         {/* Action Buttons */}
           </>
         )}
 
         {/* Action Buttons */}
         <div className="flex gap-md justify-center">
-          <button className="btn btn-secondary" onClick={() => navigate('/treatment-plan')}>
+          <button className="btn btn-secondary" onClick={() => navigate(`/treatment-plan${location.search}`)}>
             ← Back to Treatment Plan
           </button>
-          <button className="btn btn-primary" onClick={() => navigate('/pathway-simulator')}>
+          <button className="btn btn-primary" onClick={() => navigate(`/pathway-simulator${location.search}`)}>
             Simulate Treatment Pathway →
           </button>
           <button className="btn btn-outline" onClick={downloadReport}>

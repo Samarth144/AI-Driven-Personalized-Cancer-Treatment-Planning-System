@@ -25,17 +25,26 @@ exports.generateFormattedPlan = async (req, res) => {
 
         // Extract the raw plan and evidence from the AI engine's response
         const rawPlan = rawTreatmentData.plan || 'No specific plan provided by AI engine.';
-        const evidence = rawTreatmentData.evidence || [];
+        const evidence = rawTreatmentData.evidence || (rawTreatmentData.plan && rawTreatmentData.plan.evidence) || [];
+        const confidence = rawTreatmentData.confidence || 92.0;
+        const protocols = rawTreatmentData.protocols || [];
 
         // Step 2: Format ONLY the evidence using the Gemini API formatter.
         console.log('Step 2: Formatting evidence with Gemini...');
-        const formattedEvidence = await formatEvidenceWithGemini(evidence);
-        console.log('Step 2a: Successfully formatted evidence with Gemini.');
+        let formattedEvidence = "No specific evidence provided for formatting.";
+        if (evidence && evidence.length > 0) {
+            formattedEvidence = await formatEvidenceWithGemini(evidence);
+            console.log('Step 2a: Successfully formatted evidence with Gemini.');
+        } else {
+            console.log('Step 2a: No evidence to format.');
+        }
 
         // Step 3: Send the raw plan and formatted evidence back to the frontend.
         console.log('Step 3: Sending raw plan and formatted evidence to frontend.');
         res.json({
             success: true,
+            confidence: confidence,
+            protocols: protocols,
             data: {
                 rawPlan: rawPlan,
                 formattedEvidence: formattedEvidence

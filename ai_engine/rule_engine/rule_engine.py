@@ -19,13 +19,33 @@ KB = {
 
 def run_rules(patient):
     cancer = patient.get("cancer_type", "").lower()
-    stage = str(patient.get("stage", "")).upper()
-    residual = patient.get("residual", "").lower()
-    brca = patient.get("BRCA", "").lower()
-    pdl1 = patient.get("PDL1", "")
-    egfr = patient.get("EGFR", "")
-    alk = patient.get("ALK", "")
-    kras = patient.get("KRAS", "")
+    
+    # 1. BRAIN SPECIFIC STAGING LOGIC
+    if cancer == "brain":
+        stage = str(patient.get("stage", "")).upper()
+        if stage not in ["LOCALIZED", "RECURRENT"]:
+            if patient.get("prior_radiation") == "yes" or "RECURRENT" in str(patient.get("diagnosis", "")).upper():
+                stage = "RECURRENT"
+            else:
+                stage = "LOCALIZED"
+    else:
+        stage = str(patient.get("stage", "")).upper()
+        if not stage:
+            print(f"[Rule Engine] Warning: No stage provided for {cancer}. Defaulting to Stage I.")
+            stage = "I"
+        
+    # 2. Extract History & Performance
+    kps = int(patient.get("kps", 100))
+    ecog = int(patient.get("ecog", 0))
+    comorbidities = str(patient.get("comorbidities", "")).lower()
+    age = int(patient.get("age", 50))
+
+    residual = str(patient.get("residual", "")).lower()
+    brca = str(patient.get("BRCA", "")).lower()
+    pdl1 = str(patient.get("PDL1", ""))
+    egfr = str(patient.get("EGFR", ""))
+    alk = str(patient.get("ALK", ""))
+    kras = str(patient.get("KRAS", ""))
 
     if cancer not in KB or cancer == "common":
         return {"error": f"Cancer type '{cancer}' not supported."}
@@ -33,9 +53,8 @@ def run_rules(patient):
     cancer_kb = KB[cancer]
     stages = cancer_kb.get("stages", {})
 
-    # Stage fallback
     if stage not in stages:
-        return {"error": f"No treatment rules found for stage '{stage}' in {cancer}."}
+        return {"error": f"No treatment rules found for status '{stage}' in {cancer}."}
 
     data = stages[stage]
 
@@ -48,12 +67,30 @@ def run_rules(patient):
         "immunotherapy": data.get("immunotherapy", []),
         "alternative_options": data.get("alternatives", []),
         "follow_up": data.get("follow_up", []),
-        "contraindications": KB["common"]["contraindications"].get("cardiac", []) 
-                            + KB["common"]["contraindications"].get("renal", []),
+        "contraindications": [],
+        "warnings": [],
+        "performance_adjustment": f"Protocol optimized for {cancer.capitalize()} {stage.capitalize()} based on standard of care guidelines.",
         "evidence": KB["common"]["evidence"]
     }
 
-    # Biomarker-specific augmentations
+    # 3. PERFORMANCE STATUS ADJUSTMENTS
+    if kps < 70 or ecog >= 2:
+        result["performance_adjustment"] = "Patient considered frail. Prioritize palliative intent, hypofractionated radiation, or monotherapy to minimize toxicity."
+        result["warnings"].append("Low performance status detected. Standard aggressive protocols may be poorly tolerated.")
+
+    # 4. COMORBIDITY-SPECIFIC RULES
+    if "heart" in comorbidities or "cardiac" in comorbidities:
+        result["contraindications"].extend(KB["common"]["contraindications"].get("cardiac", []))
+        result["warnings"].append("Cardiac history detected. Avoid cardiotoxic agents like Anthracyclines or Trastuzumab without cardiology clearance.")
+    
+    if "kidney" in comorbidities or "renal" in comorbidities or "dialysis" in comorbidities:
+        result["contraindications"].extend(KB["common"]["contraindications"].get("renal", []))
+        result["warnings"].append("Renal impairment detected. Dose-adjustment required for platinum-based agents or other renally cleared drugs.")
+
+    if "diabetes" in comorbidities:
+        result["warnings"].append("Diabetic history detected. Monitor glucose levels during steroid-heavy phases of treatment.")
+
+    # 5. BIOMARKER AUGMENTATIONS (Original Logic)
     if cancer == "breast":
         if brca == "positive" and "brca" in data:
             result["brca_options"] = data["brca"]
@@ -62,18 +99,13 @@ def run_rules(patient):
 
     if cancer == "lung":
         biomarker_hits = []
-        if egfr:
-            biomarker_hits.append(data.get("targeted", {}).get("EGFR"))
-        if alk:
-            biomarker_hits.append(data.get("targeted", {}).get("ALK"))
-        if kras:
-            biomarker_hits.append(data.get("targeted", {}).get("KRAS"))
+        if egfr: biomarker_hits.append(data.get("targeted", {}).get("EGFR"))
+        if alk: biomarker_hits.append(data.get("targeted", {}).get("ALK"))
+        if kras: biomarker_hits.append(data.get("targeted", {}).get("KRAS"))
         result["biomarker_targets"] = [b for b in biomarker_hits if b]
-
         if pdl1 and data.get("immunotherapy"):
             result["immunotherapy_candidates"] = data["immunotherapy"]
 
-    # Universal follow-up fallback
     if not result["follow_up"]:
         result["follow_up"] = KB["common"]["follow_up"]["standard"]
 

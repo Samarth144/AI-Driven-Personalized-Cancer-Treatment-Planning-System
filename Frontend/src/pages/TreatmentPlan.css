@@ -8,6 +8,8 @@
 
 .fluid-container {
     padding: 2rem 4rem;
+    max-width: 1400px;
+    margin: 0 auto;
 }
 
 /* Header */
@@ -120,6 +122,39 @@
     max-width: 90%;
 }
 
+.plan-details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+    margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+    .plan-details-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.plan-detail-section {
+    background: rgba(255, 255, 255, 0.02);
+    padding: 1.25rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.plan-list {
+    margin: 0.5rem 0 0 0;
+    padding-left: 1.25rem;
+    color: #cbd5e1;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 0.95rem;
+}
+
+.plan-list li {
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+}
+
 .guideline-badge {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -159,9 +194,16 @@
 /* Protocol Grid */
 .protocol-comparison-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 1.5rem;
     margin-bottom: 2rem;
+    width: 100%;
+}
+
+@media (max-width: 1200px) {
+    .protocol-comparison-grid {
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    }
 }
 
 .protocol-option-card {
@@ -170,6 +212,9 @@
     border-radius: 12px;
     padding: 1.5rem;
     position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .protocol-option-card.recommended {
