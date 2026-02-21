@@ -26,13 +26,17 @@ def extract_text_from_pdf(file_path):
     """Extracts text from a PDF file using pdfplumber."""
     text = ""
     try:
+        print(f"[AI ENGINE] Attempting to extract text from: {file_path}")
         with pdfplumber.open(file_path) as pdf:
             for page in pdf.pages:
                 page_text = page.extract_text()
                 if page_text:
                     text += page_text + "\n"
+        print(f"[AI ENGINE] Successfully extracted {len(text)} characters.")
     except Exception as e:
-        print(f"Error extracting text from PDF: {e}")
+        print(f"[AI ENGINE] Error extracting text from PDF: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return None
     return text
 
@@ -187,13 +191,27 @@ def predict_side_effects(patient_data):
 
     return {key: round(value, 1) for key, value in side_effects.items()}
 
+import os
+
 @app.route('/process_report_file', methods=['POST'])
 def process_report_file():
     data = request.get_json()
-    if not data or 'file_path' not in data:
-        return jsonify({"error": "No file path provided"}), 400
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+    
+    file_path = data.get('file_path')
+    filename = data.get('filename')
 
-    file_path = data['file_path']
+    if filename:
+        # Resolve filename relative to Backend/uploads/reports
+        # Using absolute path for maximum reliability
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        file_path = os.path.join(base_dir, "Backend", "uploads", "reports", filename)
+    
+    if not file_path:
+        return jsonify({"error": "No file path or filename provided"}), 400
+
+    print(f"[AI ENGINE] Processing file: {file_path}")
     report_text = extract_text_from_pdf(file_path)
 
     if not report_text:

@@ -2,7 +2,7 @@ const TreatmentPlan = require('../models/TreatmentPlan');
 const Patient = require('../models/Patient');
 const User = require('../models/User');
 const axios = require('axios');
-const { formatEvidenceWithGemini, generatePathwayWithGemini } = require('../utils/geminiFormatter'); // Updated import
+const { formatEvidenceWithGemini, generatePathwayWithGemini, generateDetailedSimulationPathway } = require('../utils/geminiFormatter'); // Updated import
 
 const { generateMockAnalysis } = require('../utils/aiSimulator');
 
@@ -34,12 +34,40 @@ exports.generatePathway = async (req, res) => {
     }
 };
 
+// @desc    Generate a detailed week-by-week simulation pathway
+// @route   POST /api/treatments/simulation/generate
+// @access  Private
+exports.generateSimulation = async (req, res) => {
+    try {
+        const inputs = req.body;
+
+        if (!inputs || Object.keys(inputs).length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Patient clinical inputs are required for simulation'
+            });
+        }
+
+        const simulationData = await generateDetailedSimulationPathway(inputs);
+
+        res.json({
+            success: true,
+            data: simulationData
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
 // @desc    Generate and format a treatment plan using AI and Gemini
 // @route   POST /api/treatments/generate-formatted
 // @access  Private
 exports.generateFormattedPlan = async (req, res) => {
     console.log('--- Initiating generateFormattedPlan ---');
-    
+
     try {
         const { patientId, cancer_type } = req.body;
 
@@ -77,7 +105,7 @@ exports.generateFormattedPlan = async (req, res) => {
         const aiEngineResponse = await axios.post('http://127.0.0.1:5000/recommend', req.body);
 
         const rawTreatmentData = aiEngineResponse.data;
-        
+
         // Extract the raw plan and evidence from the AI engine's response
         const rawPlan = rawTreatmentData.plan || 'No specific plan provided by AI engine.';
         const evidence = rawTreatmentData.evidence || (rawTreatmentData.plan && rawTreatmentData.plan.evidence) || [];

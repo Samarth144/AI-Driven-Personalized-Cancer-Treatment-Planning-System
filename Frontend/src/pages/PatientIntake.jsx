@@ -335,7 +335,7 @@ const PatientIntake = () => {
       if (uploadRes.data.filename) {
         // 2. Call AI Engine to extract data (Direct axios for external port 5000)
         const aiRes = await axios.post('http://localhost:5000/process_report_file', {
-          file_path: `../Backend/uploads/reports/${uploadRes.data.filename}`
+          filename: uploadRes.data.filename
         });
 
         if (aiRes.data.extracted_data) {

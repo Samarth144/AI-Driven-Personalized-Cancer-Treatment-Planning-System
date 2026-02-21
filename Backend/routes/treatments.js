@@ -7,7 +7,8 @@ const {
     updateTreatment,
     approveTreatment,
     generateFormattedPlan,
-    generatePathway
+    generatePathway,
+    generateSimulation
 } = require('../controllers/treatmentController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -19,6 +20,9 @@ router.route('/generate-formatted')
 
 router.route('/pathway/generate')
     .post(protect, generatePathway);
+
+router.route('/simulation/generate')
+    .post(protect, generateSimulation);
 
 router.route('/patient/:patientId')
     .get(protect, getPatientTreatments);
