@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Container, Grid, Typography, Button, IconButton, Chip, TablePagination, CircularProgress,
-  TextField, InputAdornment, Menu, MenuItem, Card, CardContent, Avatar
+  TextField, InputAdornment, Menu, MenuItem, Card, CardContent, Avatar, Badge
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -18,8 +18,8 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import MedicineIcon from '@mui/icons-material/Medication';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import SpaIcon from '@mui/icons-material/Spa';
+import NotificationsIcon from '@mui/icons-material/Notifications';
 
-// ... (colors and StatItem, PatientRow remain the same)
 const colors = {
   bg: '#0B1221',
   glass: 'rgba(22, 32, 50, 0.8)',
@@ -30,7 +30,8 @@ const colors = {
   green: '#10B981',
   text: '#F8FAFC',
   muted: '#64748B',
-  border: 'rgba(5, 151, 137, 0.3)'
+  border: 'rgba(5, 151, 137, 0.3)',
+  purple: '#7C5CFF'
 };
 
 const StatItem = ({ label, value, unit }) => (
@@ -123,7 +124,27 @@ const PatientRow = ({ p, index, onClick }) => {
           />
         </Box>
 
-        <Box sx={{ width: '10%', textAlign: 'right' }}>
+        <Box sx={{ width: '10%', textAlign: 'right', display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+          <IconButton 
+            size="small" 
+            sx={{ color: colors.amber }}
+            onClick={(e) => {
+              e.stopPropagation();
+              const exportReport = async () => {
+                const res = await apiClient.get(`/patients/${p.id}/awareness/lifestyle-report`, { responseType: 'blob' });
+                const url = window.URL.createObjectURL(new Blob([res.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `LifestyleReport_${p.lastName}.pdf`);
+                document.body.appendChild(link);
+                link.click();
+              };
+              exportReport();
+            }}
+            title="Download Lifestyle Report"
+          >
+            <DescriptionIcon fontSize="inherit" />
+          </IconButton>
           <IconButton size="small" sx={{ color: colors.teal }}>
             <ArrowForwardIosIcon fontSize="inherit" />
           </IconButton>
@@ -149,12 +170,14 @@ const Dashboard = () => {
   const [dbStats, setDbStats] = useState([]);
   const [dbPatients, setDbPatients] = useState([]);
   const [patientData, setPatientData] = useState(null);
+  const [alerts, setAlerts] = useState([]);
 
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [filterAnchor, setFilterAnchor] = useState(null);
   const [activeFilter, setActiveFilter] = useState('All');
+  const [notificationAnchor, setNotificationAnchor] = useState(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -185,6 +208,10 @@ const Dashboard = () => {
           const patientsRes = await apiClient.get('/dashboard/recent-patients?limit=100');
           if (patientsRes.data.success) {
             setDbPatients(patientsRes.data.data);
+          }
+          const alertsRes = await apiClient.get('/dashboard/alerts');
+          if (alertsRes.data.success) {
+            setAlerts(alertsRes.data.data);
           }
         }
       } catch (err) {
@@ -429,15 +456,93 @@ const Dashboard = () => {
     <Box sx={{ minHeight: '100vh', bgcolor: colors.bg, py: 6, px: { xs: 2, md: 6 } }}>
       <Container maxWidth="xl">
 
-        <Box sx={{ mb: 6 }}>
-          <Typography variant="h3" sx={{ fontFamily: '"Rajdhani"', fontWeight: 700, color: '#fff' }}>
-            {isAdmin ? 'SYSTEM ADMINISTRATION' : 'CLINICAL DASHBOARD'}
-          </Typography>
-          <Typography variant="body1" sx={{ color: colors.muted, fontFamily: '"Space Grotesk"', mt: 1 }}>
-            {isAdmin
-              ? 'Oversee system-wide clinical data and platform users.'
-              : 'Manage patient cohorts and view AI-driven analysis results.'}
-          </Typography>
+        <Box sx={{ mb: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <Box>
+            <Typography variant="h3" sx={{ fontFamily: '"Rajdhani"', fontWeight: 700, color: '#fff' }}>
+              {isAdmin ? 'SYSTEM ADMINISTRATION' : 'CLINICAL DASHBOARD'}
+            </Typography>
+            <Typography variant="body1" sx={{ color: colors.muted, fontFamily: '"Space Grotesk"', mt: 1 }}>
+              {isAdmin
+                ? 'Oversee system-wide clinical data and platform users.'
+                : 'Manage patient cohorts and view AI-driven analysis results.'}
+            </Typography>
+          </Box>
+          {isDoctor && (
+            <>
+              <IconButton 
+                onClick={(e) => setNotificationAnchor(e.currentTarget)}
+                sx={{ color: colors.amber, border: `1px solid ${colors.border}`, p: 1.5 }}
+              >
+                <Badge badgeContent={alerts.length} color="error">
+                  <NotificationsIcon />
+                </Badge>
+              </IconButton>
+              
+              <Menu
+                anchorEl={notificationAnchor}
+                open={Boolean(notificationAnchor)}
+                onClose={() => setNotificationAnchor(null)}
+                PaperProps={{
+                  sx: {
+                    bgcolor: 'rgba(22, 32, 50, 0.95)',
+                    backdropFilter: 'blur(10px)',
+                    border: `1px solid ${colors.border}`,
+                    color: '#fff',
+                    mt: 1.5,
+                    width: 350,
+                    maxHeight: 400
+                  }
+                }}
+                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+              >
+                <Box sx={{ p: 2, borderBottom: `1px solid rgba(255,255,255,0.1)` }}>
+                  <Typography variant="subtitle1" sx={{ fontFamily: 'Rajdhani', fontWeight: 700 }}>NOTIFICATIONS</Typography>
+                </Box>
+                {alerts.length === 0 ? (
+                  <MenuItem sx={{ py: 3, justifyContent: 'center' }}>
+                    <Typography variant="body2" sx={{ color: colors.muted }}>No new alerts</Typography>
+                  </MenuItem>
+                ) : (
+                  alerts.map((alert) => (
+                    <Box
+                      key={alert.id}
+                      sx={{ 
+                        borderBottom: '1px solid rgba(255,255,255,0.05)', 
+                        py: 2,
+                        px: 2,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-start',
+                        bgcolor: alert.priority === 'CRITICAL' ? 'rgba(239, 68, 68, 0.08)' : 'transparent',
+                        cursor: 'default'
+                      }}
+                    >
+                      {/* Row 1: Priority badge + timestamp */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', mb: 0.5 }}>
+                        <Typography variant="caption" sx={{ color: alert.priority === 'CRITICAL' ? '#EF4444' : colors.amber, fontWeight: 700, letterSpacing: 1 }}>
+                          {alert.priority} ALERT
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: colors.muted }}>
+                          {new Date(alert.timestamp || alert.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        </Typography>
+                      </Box>
+                      {/* Row 2: Patient name */}
+                      {alert.Patient && (
+                        <Typography variant="caption" sx={{ color: colors.teal, fontWeight: 600, mb: 0.5, fontFamily: 'Rajdhani' }}>
+                          {alert.Patient.firstName} {alert.Patient.lastName} · {alert.Patient.mrn}
+                        </Typography>
+                      )}
+                      {/* Row 3: Message */}
+                      <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)', lineHeight: 1.5 }}>
+                        {alert.message}
+                      </Typography>
+                    </Box>
+                  ))
+                )}
+              </Menu>
+            </>
+          )}
         </Box>
 
         <Box sx={{
