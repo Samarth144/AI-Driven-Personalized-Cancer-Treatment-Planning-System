@@ -23,4 +23,23 @@ router.route('/:id')
 router.post('/:id/analyze-pathology', protect, analyzePathology);
 router.get('/:id/awareness', protect, getAwarenessGuidance);
 
+// ─── New Awareness Features ──────────────────────────────────────────────────
+const {
+    submitDailyQuestionnaire,
+    getDailyTasks,
+    updateTaskStatus,
+    getAdherenceHistory,
+    resetDailyQuestionnaire,
+    exportDailyPlan,
+    exportLifestyleReport
+} = require('../controllers/awarenessController');
+
+router.post('/:id/awareness/questionnaire', protect, submitDailyQuestionnaire);
+router.get('/:id/awareness/tasks', protect, getDailyTasks);
+router.patch('/:id/awareness/tasks/:taskId', protect, updateTaskStatus);
+router.get('/:id/awareness/adherence', protect, getAdherenceHistory);
+router.post('/:id/awareness/reset-test', protect, resetDailyQuestionnaire);
+router.get('/:id/awareness/export-plan', protect, exportDailyPlan);
+router.get('/:id/awareness/lifestyle-report', protect, exportLifestyleReport);
+
 module.exports = router;

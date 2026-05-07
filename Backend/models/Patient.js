@@ -110,6 +110,10 @@ const Patient = sequelize.define('Patient', {
         type: DataTypes.JSONB,
         defaultValue: {}
     },
+    lastQuestionnaireDate: {
+        type: DataTypes.DATEONLY,
+        allowNull: true
+    },
     userId: {
         type: DataTypes.UUID,
         allowNull: true,
