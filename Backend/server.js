@@ -166,6 +166,11 @@ const server = app.listen(PORT, () => {
   `);
 });
 
+// Increase server timeout for long AI processing (10 minutes)
+server.timeout = 600000;
+server.keepAliveTimeout = 610000;
+server.headersTimeout = 620000;
+
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err, promise) => {
     console.log(`Error: ${err.message}`);

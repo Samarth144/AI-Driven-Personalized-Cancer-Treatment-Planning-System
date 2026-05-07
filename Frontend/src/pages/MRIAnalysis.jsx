@@ -9,6 +9,7 @@ import ViewInArIcon from '@mui/icons-material/ViewInAr';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import AutoGraphIcon from '@mui/icons-material/AutoGraph';
 import GradientIcon from '@mui/icons-material/Gradient'; 
+import BiotechIcon from '@mui/icons-material/Biotech';
 import { Chart as ChartJS, RadialLinearScale, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip as ChartTooltip, Legend, Filler } from 'chart.js';
 import { Radar, Bar, Line } from 'react-chartjs-2';
 import apiClient from '../utils/apiClient';
@@ -33,6 +34,68 @@ const colors = {
 const sequences = ['T1', 'T1ce', 'T2', 'FLAIR'];
 
 // --- COMPONENTS ---
+
+const ProcessingOverlay = () => (
+  <motion.div 
+    initial={{ opacity: 0 }} 
+    animate={{ opacity: 1 }} 
+    exit={{ opacity: 0 }}
+    style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: 'rgba(7, 11, 20, 0.9)',
+      backdropFilter: 'blur(10px)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+    }}
+  >
+    <Box sx={{ position: 'relative', width: 200, height: 200, mb: 4 }}>
+      {/* Outer Pulse */}
+      <motion.div
+        animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
+        transition={{ duration: 3, repeat: Infinity }}
+        style={{
+          position: 'absolute', inset: 0, borderRadius: '50%',
+          border: '2px solid #00F0FF', boxShadow: '0 0 40px rgba(0, 240, 255, 0.4)'
+        }}
+      />
+      {/* Middle Rotating Ring */}
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+        style={{
+          position: 'absolute', inset: 20, borderRadius: '50%',
+          border: '2px dashed #059789', opacity: 0.5
+        }}
+      />
+      {/* Center Icon */}
+      <Box sx={{ 
+        position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'
+      }}>
+        <BiotechIcon sx={{ fontSize: 80, color: '#fff' }} />
+      </Box>
+    </Box>
+
+    <Typography variant="h4" sx={{ fontFamily: 'Rajdhani', fontWeight: 700, color: '#fff', mb: 1 }}>
+      MRI SEGMENTATION ENGINE
+    </Typography>
+    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+      <motion.div
+        animate={{ opacity: [0, 1, 0] }}
+        transition={{ duration: 2, repeat: Infinity }}
+      >
+        <Typography variant="body1" sx={{ color: '#00F0FF', fontFamily: 'Space Grotesk', fontWeight: 600 }}>
+          EXTRACTING RADIOMIC FEATURES & VOXEL MAPPING...
+        </Typography>
+      </motion.div>
+    </Box>
+    
+    <Box sx={{ width: 300, mt: 4 }}>
+      <LinearProgress sx={{ 
+        height: 4, borderRadius: 2, bgcolor: 'rgba(255,255,255,0.1)',
+        '& .MuiLinearProgress-bar': { background: 'linear-gradient(90deg, #00F0FF, #059789)' }
+      }} />
+    </Box>
+  </motion.div>
+);
 
 // --- COMPONENTS ---
 
@@ -438,7 +501,7 @@ const MRIAnalysis = () => {
       }
   };
 
-  const handleRunAnalysis = async () => {
+  const handleRunAnalysis = async (force = false) => {
     setLoading(true);
     try {
         // 1. Create Analysis Record
@@ -457,14 +520,14 @@ const MRIAnalysis = () => {
         console.log("Analysis created:", analysisId);
 
         // 2. Trigger Segmentation Process
-        const processRes = await apiClient.post(`/analyses/${analysisId}/process`, {});
+        const processRes = await apiClient.post(`/analyses/${analysisId}/process`, { force });
 
         if (processRes.data.success) {
              console.log("Segmentation result:", processRes.data);
              updateMetricsFromData(processRes.data.data.data);
              setViewPlane('axial'); // Force axial view
              setRefreshTrigger(prev => prev + 1); // Trigger image load
-             showToast("SEGMENTATION MODEL GENERATED SUCCESSFULLY");
+             showToast(force ? "FRESH ANALYSIS COMPLETED" : "ANALYSIS RETRIEVED SUCCESSFULLY");
         }
 
     } catch (err) {
@@ -477,6 +540,9 @@ const MRIAnalysis = () => {
 
   return (
     <div className="mri-analysis-root">
+      <AnimatePresence>
+        {loading && <ProcessingOverlay />}
+      </AnimatePresence>
       <NotificationToast />
       <Box className="fluid-container" sx={{ px: { xs: 2, md: 6 }, py: 4 }}>
 
@@ -502,7 +568,7 @@ const MRIAnalysis = () => {
               variant="contained" 
               startIcon={<PlayArrowIcon />}
               className="run-analysis-btn"
-              onClick={handleRunAnalysis}
+              onClick={() => handleRunAnalysis(true)}
               disabled={loading || model !== 'Brain'}
               sx={{ width: 'fit-content', px: 6, py: 1.5 }}
             >

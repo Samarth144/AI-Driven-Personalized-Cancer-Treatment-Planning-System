@@ -2,12 +2,21 @@ import numpy as np
 import trimesh
 from skimage.measure import marching_cubes
 import os
+import argparse
+
+# =====================================================
+# CONFIG & ARGS
+# =====================================================
+parser = argparse.ArgumentParser()
+parser.add_argument("--data_dir", type=str, default=".", help="Directory containing the .npy files and where to save .glb")
+args = parser.parse_args()
+
+data_dir = args.data_dir
 
 # =====================================================
 # LOAD PROBABILITY MAP
 # =====================================================
-# We use the probability map to get precise regions
-probs_path = "tumor_probs.npy"
+probs_path = os.path.join(data_dir, "tumor_probs.npy")
 if not os.path.exists(probs_path):
     print(f"[ERROR] Probability map not found at {os.path.abspath(probs_path)}")
     exit(1)
@@ -22,8 +31,9 @@ try:
     if np.max(probs) > 0.8:
         verts, faces, _, _ = marching_cubes(probs, level=0.8)
         tumor_mesh = trimesh.Trimesh(vertices=verts, faces=faces)
-        tumor_mesh.export("tumor.glb")
-        print("[SUCCESS] tumor.glb (core) exported")
+        output_path = os.path.join(data_dir, "tumor.glb")
+        tumor_mesh.export(output_path)
+        print(f"[SUCCESS] {output_path} (core) exported")
     else:
         print("[WARNING] No high-confidence core detected")
 except Exception as e:
@@ -36,8 +46,9 @@ try:
     if np.max(probs) > 0.2:
         verts, faces, _, _ = marching_cubes(probs, level=0.2)
         edema_mesh = trimesh.Trimesh(vertices=verts, faces=faces)
-        edema_mesh.export("edema.glb")
-        print("[SUCCESS] edema.glb exported")
+        output_path = os.path.join(data_dir, "edema.glb")
+        edema_mesh.export(output_path)
+        print(f"[SUCCESS] {output_path} exported")
     else:
         print("[WARNING] No edema region detected")
 except Exception as e:

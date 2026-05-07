@@ -73,9 +73,12 @@ const MetricBox = ({ label, value, unit, highlight = false }) => (
   </Box>
 );
 
-const ThreeDViewport = ({ volume, location, analysisId, layers, brainOpacity, setBrainOpacity, realisticView, margins, status }) => {
+const ThreeDViewport = ({ volume, location, analysisId, layers, brainOpacity, setBrainOpacity, realisticView, margins, status, data }) => {
   const viewerRef = useRef(null);
   const [isRotating, setIsRotating] = useState(true);
+
+  // Use the isModelReady flag from the backend data instead of polling the file
+  const modelReady = data?.isModelReady === true;
 
   const updateMaterials = () => {
     const viewer = viewerRef.current;
@@ -123,7 +126,7 @@ const ThreeDViewport = ({ volume, location, analysisId, layers, brainOpacity, se
   // Run update whenever these props change
   useEffect(() => {
     updateMaterials();
-  }, [layers.tumor, layers.edema, layers.brain, brainOpacity, realisticView, analysisId]);
+  }, [layers.tumor, layers.edema, layers.brain, brainOpacity, realisticView, analysisId, modelReady]);
 
   const handleFullscreen = () => {
     if (viewerRef.current) {
@@ -133,12 +136,11 @@ const ThreeDViewport = ({ volume, location, analysisId, layers, brainOpacity, se
   };
 
   const getModelUrl = () => {
-    if (!analysisId) {
-      return null; // Don't try to load a model if there's no analysis ID
+    if (!analysisId || !modelReady) {
+      return null;
     }
     const pid = analysisId;
-    const name = 'tumor_with_brain.glb'; // This is the name the backend generates
-    // Use the base URL from the configured API client
+    const name = 'tumor_with_brain.glb';
     return `${apiClient.defaults.baseURL}/analyses/${pid}/model?modelName=${name}`;
   };
 
@@ -148,7 +150,7 @@ const ThreeDViewport = ({ volume, location, analysisId, layers, brainOpacity, se
     <Box className="viewport-3d" sx={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
       <div className="viewport-grid-bg"></div>
 
-      {(status === 'processing' || status === 'pending') ? (
+      {(!modelReady || status === 'processing' || status === 'pending') ? (
         <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
           <CircularProgress sx={{ color: colors.cyan }} size={48} thickness={5} />
           <Typography variant="h6" sx={{ color: colors.cyan, fontFamily: '"Rajdhani"', fontWeight: 700, letterSpacing: '1px' }}>
@@ -158,7 +160,7 @@ const ThreeDViewport = ({ volume, location, analysisId, layers, brainOpacity, se
             Processing AI Segmentation and Margins (this may take ~45s)
           </Typography>
         </Box>
-      ) : modelUrl && status === 'completed' ? (
+      ) : modelUrl ? (
         <model-viewer
           key={`viewer-${realisticView}-${analysisId}`}
           ref={viewerRef}
@@ -284,6 +286,7 @@ const Tumor3DPage = () => {
   });
   const [margins, setMargins] = useState(null);
   const [analysisStatus, setAnalysisStatus] = useState(null);
+  const [analysisData, setAnalysisData] = useState(null);
 
   const toggleLayer = (key) => setLayers({ ...layers, [key]: !layers[key] });
 
@@ -295,16 +298,20 @@ const Tumor3DPage = () => {
 
   useEffect(() => {
     let interval;
-    if (analysisStatus === 'processing' || analysisStatus === 'pending') {
+    // Poll if overall status is not completed OR if it is completed but the 3D model isn't ready yet
+    const needsPolling = (analysisStatus === 'processing' || analysisStatus === 'pending') || 
+                         (analysisStatus === 'completed' && analysisData?.isModelReady !== true);
+
+    if (needsPolling) {
       interval = setInterval(() => {
         const pid = new URLSearchParams(location.search).get('patientId');
         if (pid) fetchPatientAndAnalysis(pid);
-      }, 5000);
+      }, 2000); // 2 second frequency for better responsiveness
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [analysisStatus, location.search]);
+  }, [analysisStatus, analysisData?.isModelReady, location.search]);
 
   const fetchPatientAndAnalysis = async (pid) => {
     try {
@@ -319,6 +326,7 @@ const Tumor3DPage = () => {
         setAnalysisId(latest.id);
         setAnalysisStatus(latest.status);
         const data = latest.data;
+        setAnalysisData(data);
         const newMetrics = {};
         if (data.volumetricAnalysis?.tumorVolume) newMetrics.volume = data.volumetricAnalysis.tumorVolume;
         if (data.volumetricAnalysis?.edemaVolume) newMetrics.edema = data.volumetricAnalysis.edemaVolume;
@@ -424,6 +432,7 @@ const Tumor3DPage = () => {
         <ThreeDViewport
           volume={analysisMetrics.volume} location={analysisMetrics.location} analysisId={analysisId}
           layers={layers} brainOpacity={brainOpacity} setBrainOpacity={setBrainOpacity} realisticView={realisticView} margins={margins} status={analysisStatus}
+          data={analysisData}
         />
 
         <Box sx={{ width: '300px', display: 'flex', flexDirection: 'column', gap: 2 }}>

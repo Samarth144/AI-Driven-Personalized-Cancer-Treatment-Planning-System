@@ -137,14 +137,67 @@ exports.processAnalysis = async (req, res) => {
             });
         }
 
+        const forceRefresh = req.body.force === true;
+        const baseDir = path.resolve(__dirname, '../../Segmentation Model');
+        const scriptDir = path.join(baseDir, 'Inference_Pipeline');
+        const resultsDir = path.join(baseDir, 'AR_Assets/results', analysis.id);
+        const fs = require('fs');
+
+        // ─── REUSE LOGIC ─────────────────────────────────────────────────────
+        // If not forcing a refresh, check if this patient already has a completed MRI analysis
+        if (!forceRefresh) {
+            const existingAnalysis = await Analysis.findOne({
+                where: { 
+                    patientId: analysis.patientId, 
+                    status: 'completed',
+                    analysisType: 'mri'
+                },
+                order: [['createdAt', 'DESC']]
+            });
+
+            if (existingAnalysis) {
+                console.log(`[processAnalysis] Reusing results from existing analysis: ${existingAnalysis.id}`);
+                
+                const oldResultsDir = path.join(baseDir, 'AR_Assets/results', existingAnalysis.id);
+                
+                // Copy assets if they exist
+                if (fs.existsSync(oldResultsDir)) {
+                    if (!fs.existsSync(resultsDir)) fs.mkdirSync(resultsDir, { recursive: true });
+                    const files = fs.readdirSync(oldResultsDir);
+                    files.forEach(file => {
+                        try {
+                            fs.copyFileSync(path.join(oldResultsDir, file), path.join(resultsDir, file));
+                        } catch (copyErr) {
+                            console.error(`Failed to copy ${file}:`, copyErr.message);
+                        }
+                    });
+                }
+
+                // Update current analysis with old data
+                await analysis.update({
+                    status: 'completed',
+                    tumorVolume: existingAnalysis.tumorVolume,
+                    edemaVolume: existingAnalysis.edemaVolume,
+                    tumorLocation: existingAnalysis.tumorLocation,
+                    intensityStats: existingAnalysis.intensityStats,
+                    textureFeatures: existingAnalysis.textureFeatures,
+                    confidence: existingAnalysis.confidence,
+                    data: existingAnalysis.data,
+                    processingTime: 0
+                });
+
+                return res.json({
+                    success: true,
+                    message: 'Reused existing analysis results',
+                    data: analysis
+                });
+            }
+        }
+
         // Update status to processing
         await analysis.update({ status: 'processing' });
 
-        const startTime = Date.now(); // Corrected capitalization
-
-        // Path to the python script
-        const baseDir = path.resolve(__dirname, '../../Segmentation Model');
-        const scriptDir = path.join(baseDir, 'Inference_Pipeline');
+        const startTime = Date.now();
         const scriptPath = path.join(scriptDir, 'infer_segmentation.py');
 
         // Resolve MRI paths
@@ -240,39 +293,7 @@ exports.processAnalysis = async (req, res) => {
              // Pass arguments as an array directly
              const stdout = await runScript('infer_segmentation.py', scriptArgs);
              
-             // 1. Create unique directory for this analysis
-             const resultsDir = path.join(baseDir, 'AR_Assets/results', analysis.id);
-             if (!require('fs').existsSync(resultsDir)) {
-                 require('fs').mkdirSync(resultsDir, { recursive: true });
-             }
-
-             // 2. Trigger 3D Mesh Generation
-             try {
-                 console.log("Generating 3D Mesh for AR...");
-                 await runScript('mask_to_mesh.py');
-                 await runScript('merge_ar_scene.py');
-             } catch (meshErr) {
-                 console.error("3D Mesh Generation failed", meshErr);
-             }
-
-             // 3. Move files to unique folder (regardless of mesh success)
-             const fs = require('fs');
-             const filesToMove = ['tumor_mask.npy', 'tumor_probs.npy', 'tumor.glb', 'edema.glb', 'brain.glb', 'tumor_with_brain.glb', 'margin_distances.json'];
-             filesToMove.forEach(file => {
-                 const oldPath = path.join(scriptDir, file); // Files are generated here
-                 const newPath = path.join(resultsDir, file);
-                 if (fs.existsSync(oldPath)) {
-                     try {
-                         if (fs.existsSync(newPath)) fs.unlinkSync(newPath); // Remove old version if exists
-                         fs.renameSync(oldPath, newPath);
-                     } catch (moveErr) {
-                         console.error(`Failed to move ${file}: ${moveErr.message}`);
-                     }
-                 }
-             });
-             console.log(`Dynamic assets stored in: ${resultsDir}`);
-
-             // Extract JSON metrics from stdout
+             // Extract JSON metrics from stdout IMMEDIATELY
              let metrics = {};
              const jsonMatch = stdout.match(/JSON_START([\s\S]*?)JSON_END/);
              if (jsonMatch && jsonMatch[1]) {
@@ -283,12 +304,67 @@ exports.processAnalysis = async (req, res) => {
                  }
              }
 
-             // Generate mock analysis results but override with real metrics
+             // 1. Create unique directory for this analysis
+             const resultsDir = path.join(baseDir, 'AR_Assets/results', analysis.id);
+             if (!require('fs').existsSync(resultsDir)) {
+                 require('fs').mkdirSync(resultsDir, { recursive: true });
+             }
+
+             // --- CRITICAL FILE MOVE (SYNCHRONOUS) ---
+             // Move .npy files immediately so slices can be extracted by getSlice
+             const criticalFiles = ['tumor_mask.npy', 'tumor_probs.npy'];
+             criticalFiles.forEach(file => {
+                 const oldPath = path.join(scriptDir, file);
+                 const newPath = path.join(resultsDir, file);
+                 if (fs.existsSync(oldPath)) {
+                     try {
+                         if (fs.existsSync(newPath)) fs.unlinkSync(newPath);
+                         fs.renameSync(oldPath, newPath);
+                     } catch (moveErr) {
+                         console.error(`[Immediate] Failed to move critical ${file}: ${moveErr.message}`);
+                     }
+                 }
+             });
+
+             // 2. Trigger 3D Mesh Generation & File Management in Background
+             // We do NOT await this, as the user wants the metrics immediately.
+             (async () => {
+                 try {
+                     console.log("[Background] Generating 3D Mesh for AR...");
+                     await runScript('mask_to_mesh.py', ['--data_dir', resultsDir]);
+                     await runScript('merge_ar_scene.py', ['--data_dir', resultsDir]);
+                     
+                     console.log(`[Background] Dynamic assets stored in: ${resultsDir}`);
+
+                     // Update analysis record when background tasks are truly finished
+                     const currentAnalysis = await Analysis.findByPk(analysis.id);
+                     if (currentAnalysis) {
+                         const updatedData = { ...currentAnalysis.data, isModelReady: true };
+                         
+                         // Add margin distances if they exist
+                         try {
+                             const marginPath = path.join(resultsDir, 'margin_distances.json');
+                             if (fs.existsSync(marginPath)) {
+                                 updatedData.margin_distances = JSON.parse(fs.readFileSync(marginPath, 'utf8'));
+                             }
+                         } catch (e) { console.error("[Background] Failed to read margins", e); }
+
+                         await currentAnalysis.update({ data: updatedData });
+                         console.log(`[Background] Analysis ${analysis.id} fully finalized (Model Ready).`);
+                     }
+
+                 } catch (meshErr) {
+                     console.error("[Background] 3D Mesh Generation failed", meshErr);
+                 }
+             })();
+
+             // Generate analysis results to return immediately
              const results = generateMockAnalysis(analysis.analysisType);
+             results.isModelReady = false; // Initial state for background task
              
              let updateData = {
                  status: 'completed',
-                 processingTime: Date.now() - startTime // Corrected capitalization
+                 processingTime: Date.now() - startTime
              };
 
              if (metrics.tumor_volume) {
@@ -299,7 +375,6 @@ exports.processAnalysis = async (req, res) => {
                  updateData.textureFeatures = metrics.texture_features;
                  updateData.confidence = metrics.confidence;
 
-                 // Synchronize nested data for frontend backward compatibility
                  results.volumetricAnalysis = {
                      tumorVolume: metrics.tumor_volume,
                      edemaVolume: metrics.edema_volume,
@@ -312,18 +387,7 @@ exports.processAnalysis = async (req, res) => {
                  results.textureFeatures = metrics.texture_features;
              }
              
-             // Extract margin distances if available
-             try {
-                 const marginPath = path.join(resultsDir, 'margin_distances.json');
-                 if (fs.existsSync(marginPath)) {
-                     const marginData = JSON.parse(fs.readFileSync(marginPath, 'utf8'));
-                     results.margin_distances = marginData;
-                 }
-             } catch (e) {
-                 console.error("Failed to append margin distances", e);
-             }
-             
-             results.segmentationOutput = "tumor_mask.npy generated successfully";
+             results.segmentationOutput = "Metrics extracted. 3D Model generating in background.";
              updateData.data = results;
 
             await analysis.update(updateData);

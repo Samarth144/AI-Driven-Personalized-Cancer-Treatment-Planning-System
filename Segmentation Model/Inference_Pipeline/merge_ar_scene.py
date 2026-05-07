@@ -8,13 +8,20 @@ from trimesh.smoothing import filter_laplacian
 import os
 import sys
 import json
+import argparse
 from generate_margin_lines import generate_margin_lines
 
 # =====================================================
-# CONFIG
+# CONFIG & ARGS
 # =====================================================
 MIN_VISIBLE_RATIO = 0.05
 MAX_ALLOWED_RATIO = 0.35
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--data_dir", type=str, default=".", help="Directory containing the .glb and .npy files")
+args = parser.parse_args()
+
+data_dir = args.data_dir
 
 def load_and_center(path):
     if not os.path.exists(path): 
@@ -29,11 +36,14 @@ def load_and_center(path):
     return mesh
 
 # =====================================================
-# LOAD ASSETS (FROM LOCAL DIR)
+# LOAD ASSETS (FROM DATA DIR)
 # =====================================================
-tumor = load_and_center("tumor.glb")
-edema = load_and_center("edema.glb")
-brain_scene = trimesh.load("../AR_Assets/brain.glb", force="scene")
+tumor = load_and_center(os.path.join(data_dir, "tumor.glb"))
+edema = load_and_center(os.path.join(data_dir, "edema.glb"))
+
+# Brain asset is relative to the script location or passed if we want
+brain_path = os.path.join(os.path.dirname(__file__), "../AR_Assets/brain.glb")
+brain_scene = trimesh.load(brain_path, force="scene")
 
 # =====================================================
 # BRAIN BOUNDS & POSITIONING
@@ -45,7 +55,7 @@ brain_size = brain_max - brain_min
 brain_diameter = brain_size.max()
 
 # Load mask for precise positioning
-mask_path = "tumor_mask.npy"
+mask_path = os.path.join(data_dir, "tumor_mask.npy")
 if os.path.exists(mask_path):
     mask = np.load(mask_path)
     voxels = np.argwhere(mask > 0)
@@ -120,7 +130,8 @@ for name, geom in brain_scene.geometry.items():
         for dir_name, line_mesh in lines.items():
             final_scene.add_geometry(line_mesh, node_name=f"MarginLine_{dir_name}")
             
-        with open("margin_distances.json", "w") as f:
+        margin_json_path = os.path.join(data_dir, "margin_distances.json")
+        with open(margin_json_path, "w") as f:
             json.dump(margin_data, f, indent=4)
 
 # Rotate to horizontal (applied to everything holistically including MarginLines)
@@ -130,11 +141,11 @@ final_scene.apply_transform(rotation)
 # EXPORT
 # =====================================================
 try:
-    if tumor: tumor.export("tumor.glb")
-    if edema: edema.export("edema.glb")
-    brain_scene.export("brain.glb")
+    if tumor: tumor.export(os.path.join(data_dir, "tumor.glb"))
+    if edema: edema.export(os.path.join(data_dir, "edema.glb"))
+    brain_scene.export(os.path.join(data_dir, "brain.glb"))
             
-    final_scene.export("tumor_with_brain.glb")
+    final_scene.export(os.path.join(data_dir, "tumor_with_brain.glb"))
     print("[SUCCESS] Precise multi-region model generated with named materials and measurement lines")
 except Exception as e:
     print(f"[ERROR] Export failed: {e}")
