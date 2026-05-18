@@ -84,24 +84,20 @@ def generate_margin_lines(brain_mesh, tumor_mesh, rotation=None):
 
         geom_list = []
 
-        # ── DASHED LINE BODY ─────────────────────────────────────────────────
-        n_dashes = max(1, int(length / (dash_l + gap_l)))
-        for i in range(n_dashes):
-            seg_start = p_tumor_surface + unit_vec * (i * (dash_l + gap_l))
-            seg_end   = seg_start + unit_vec * dash_l
-            if np.linalg.norm(seg_end - p_tumor_surface) > length:
-                seg_end = p_skull_surface
-            cyl = trimesh.creation.cylinder(radius=dash_r, segment=[seg_start, seg_end])
-            cyl.visual.face_colors = np.tile(rgba_body, (len(cyl.faces), 1))
-            geom_list.append(cyl)
+        # ── SINGLE THIN TUBE (replaces ~30 individual dash cylinders) ─────────
+        # One cylinder per line — same hairline radius, no per-dash loop overhead
+        cyl = trimesh.creation.cylinder(radius=dash_r, segment=[p_tumor_surface, p_skull_surface], sections=6)
+        cyl.visual.face_colors = np.tile(rgba_body, (len(cyl.faces), 1))
+        geom_list.append(cyl)
+
         # ── TUMOR-SIDE ENDPOINT: small muted gray sphere ─────────────────────
-        ep_tumor = trimesh.creation.uv_sphere(radius=tumor_ep_r, count=[8, 8])
+        ep_tumor = trimesh.creation.uv_sphere(radius=tumor_ep_r, count=[6, 6])
         ep_tumor.apply_translation(p_tumor_surface)
         ep_tumor.visual.face_colors = np.tile(rgba_tumor_ep, (len(ep_tumor.faces), 1))
         geom_list.append(ep_tumor)
 
         # ── SKULL-SIDE ENDPOINT: priority-colored sphere ──────────────────────
-        ep_skull = trimesh.creation.uv_sphere(radius=skull_ep_r, count=[8, 8])
+        ep_skull = trimesh.creation.uv_sphere(radius=skull_ep_r, count=[6, 6])
         ep_skull.apply_translation(p_skull_surface)
         ep_skull.visual.face_colors = np.tile(rgba_skull_ep, (len(ep_skull.faces), 1))
         geom_list.append(ep_skull)
@@ -113,7 +109,7 @@ def generate_margin_lines(brain_mesh, tumor_mesh, rotation=None):
         for perp in [perp1, perp2]:
             t_start = p_skull_surface - perp * (tick_l / 2)
             t_end   = p_skull_surface + perp * (tick_l / 2)
-            tick_cyl = trimesh.creation.cylinder(radius=tick_r, segment=[t_start, t_end])
+            tick_cyl = trimesh.creation.cylinder(radius=tick_r, segment=[t_start, t_end], sections=4)
             tick_cyl.visual.face_colors = np.tile(rgba_skull_ep, (len(tick_cyl.faces), 1))
             geom_list.append(tick_cyl)
 

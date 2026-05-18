@@ -473,7 +473,7 @@ const Dashboard = () => {
                 onClick={(e) => setNotificationAnchor(e.currentTarget)}
                 sx={{ color: colors.amber, border: `1px solid ${colors.border}`, p: 1.5 }}
               >
-                <Badge badgeContent={alerts.length} color="error">
+                <Badge badgeContent={alerts.filter(a => !a.isRead).length} color="error">
                   <NotificationsIcon />
                 </Badge>
               </IconButton>
@@ -515,14 +515,21 @@ const Dashboard = () => {
                         flexDirection: 'column',
                         alignItems: 'flex-start',
                         bgcolor: alert.priority === 'CRITICAL' ? 'rgba(239, 68, 68, 0.08)' : 'transparent',
-                        cursor: 'default'
+                        opacity: alert.isRead ? 0.55 : 1,
+                        cursor: 'default',
+                        transition: 'opacity 0.2s'
                       }}
                     >
-                      {/* Row 1: Priority badge + timestamp */}
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', mb: 0.5 }}>
-                        <Typography variant="caption" sx={{ color: alert.priority === 'CRITICAL' ? '#EF4444' : colors.amber, fontWeight: 700, letterSpacing: 1 }}>
-                          {alert.priority} ALERT
-                        </Typography>
+                      {/* Row 1: Priority badge + unread dot + timestamp */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', mb: 0.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          {!alert.isRead && (
+                            <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: alert.priority === 'CRITICAL' ? '#EF4444' : colors.amber, flexShrink: 0 }} />
+                          )}
+                          <Typography variant="caption" sx={{ color: alert.priority === 'CRITICAL' ? '#EF4444' : colors.amber, fontWeight: 700, letterSpacing: 1 }}>
+                            {alert.priority} ALERT
+                          </Typography>
+                        </Box>
                         <Typography variant="caption" sx={{ color: colors.muted }}>
                           {new Date(alert.timestamp || alert.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                         </Typography>

@@ -32,7 +32,7 @@ def load_and_center(path):
         if len(mesh.geometry) == 0: return None
         mesh = trimesh.util.concatenate(list(mesh.geometry.values()))
     mesh.apply_translation(-mesh.centroid)
-    filter_laplacian(mesh, iterations=5)
+    filter_laplacian(mesh, iterations=1)  # 1 pass is sufficient; meshes are pre-decimated
     return mesh
 
 # =====================================================

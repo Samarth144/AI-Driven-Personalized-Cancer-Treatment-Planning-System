@@ -8,23 +8,23 @@ import './About.css';
 
 // --- DATA: The "Living" Metrics ---
 const stats = [
-  { 
-    label: "Cancers Supported", 
-    value: "5+", 
+  {
+    label: "Cancers Supported",
+    value: "5+",
     sub: "Brain · Lung · Breast · Liver · Pancreas",
     color: "blue",
     icon: <BiotechOutlinedIcon />
   },
-  { 
-    label: "Data Modalities", 
-    value: "3", 
+  {
+    label: "Data Modalities",
+    value: "3",
     sub: "MRI/CT · Genomics · Pathology",
     color: "teal",
     icon: <AutoGraphOutlinedIcon />
   },
-  { 
-    label: "Data Integrity", 
-    value: "100%", 
+  {
+    label: "Data Integrity",
+    value: "100%",
     sub: "Validated Clinical Evidence",
     color: "amber",
     icon: <VerifiedUserOutlinedIcon />
@@ -36,10 +36,9 @@ function About() {
     <div className="about-page-root">
       {/* Background Tech Mesh */}
       <div className="about-mesh-bg"></div>
-
       <Container maxWidth="xl" style={{ position: 'relative', zIndex: 1 }}>
         <Grid container spacing={8} alignItems="center">
-          
+
           {/* LEFT: The Narrative (Animated Text) */}
           <Grid xs={12} md={8}>
             <motion.div
@@ -68,10 +67,10 @@ function About() {
               {/* Trust Badges */}
               <div className="trust-badges">
                 {['NCCN Guideline Compliant', 'HIPAA Ready Architecture', 'Explainable AI (XAI)'].map((text) => (
-                  <Chip 
-                    key={text} 
-                    icon={<VerifiedUserOutlinedIcon style={{ color: '#059789' }} />} 
-                    label={text} 
+                  <Chip
+                    key={text}
+                    icon={<VerifiedUserOutlinedIcon style={{ color: '#059789' }} />}
+                    label={text}
                     className="trust-chip"
                   />
                 ))}

@@ -79,15 +79,24 @@ exports.submitDailyQuestionnaire = async (req, res) => {
             }
         });
 
-        await DailyTask.bulkCreate(tasksToCreate, { transaction });
+        // bulkCreate returns the saved records WITH their generated UUIDs —
+        // critical so the frontend can call PATCH /tasks/:taskId on them.
+        const savedTasks = await DailyTask.bulkCreate(tasksToCreate, {
+            transaction,
+            returning: true  // PostgreSQL: return inserted rows
+        });
 
         await transaction.commit();
+
+        // Sort morning → afternoon → evening so the frontend receives them in order
+        const order = { morning: 0, afternoon: 1, evening: 2 };
+        savedTasks.sort((a, b) => (order[a.timeOfDay] ?? 9) - (order[b.timeOfDay] ?? 9));
 
         res.status(201).json({
             success: true,
             data: {
                 log,
-                tasks: tasksToCreate
+                tasks: savedTasks   // real DB records, each with a valid .id
             }
         });
 
@@ -265,16 +274,21 @@ exports.exportLifestyleReport = async (req, res) => {
 // @access  Private (Doctor/Admin)
 exports.getDoctorAlerts = async (req, res) => {
     try {
+        const ninetyDaysAgo = new Date();
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
         const alerts = await PatientAlert.findAll({
             where: {
                 oncologistId: req.user.id,
-                isRead: false
+                timestamp: { [Op.gte]: ninetyDaysAgo }
+                // No isRead filter — all alerts are returned so they persist
             },
             include: [{
                 model: Patient,
                 attributes: ['firstName', 'lastName', 'mrn']
             }],
-            order: [['timestamp', 'DESC']]
+            order: [['timestamp', 'DESC']],
+            limit: 50
         });
 
         res.json({ success: true, data: alerts });
