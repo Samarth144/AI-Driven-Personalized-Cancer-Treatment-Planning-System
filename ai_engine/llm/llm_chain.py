@@ -132,7 +132,7 @@ OLLAMA_OPTIONS = {
     "num_ctx": 4096,
 }
 
-def generate_treatment_plan(patient, rules, evidence_levels, cancer, query, queries):
+def generate_treatment_plan(patient, rules, evidence_levels, cancer, query, queries, feedback=None):
     evidence = hybrid_retrieve(cancer, query, queries)
     evidence_text = "\n".join([f"- {e['text']}" for e in evidence])
     rule_summary = json.dumps(rules, indent=2)
@@ -158,11 +158,13 @@ def generate_treatment_plan(patient, rules, evidence_levels, cancer, query, quer
     except Exception as e:
         print(f"[MEMORY] Experience retrieval error: {e}")
 
+    feedback_prompt = f"\n\nCRITICAL DOCTOR FEEDBACK/REVISION REQUEST: {feedback}\nYou MUST modify the treatment plan to incorporate this feedback while maintaining clinical safety.\n" if feedback else ""
+
     prompt = f"""
     Return a structured JSON oncology treatment plan.
     PATIENT: {patient}
     RULES: {rule_summary}
-    EVIDENCE: {evidence_text}
+    EVIDENCE: {evidence_text}{feedback_prompt}
     Return ONLY valid JSON with primary_treatment, clinical_rationale, formatted_evidence, alternatives, safety_alerts, follow_up, pathway.
     """
 

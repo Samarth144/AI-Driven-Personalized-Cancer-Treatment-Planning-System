@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
-  Box, Typography, Button, LinearProgress
+  Box, Typography, Button, LinearProgress, TextField
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
@@ -164,6 +164,7 @@ function TreatmentPlan() {
   const [treatmentData, setTreatmentData] = useState({});
   const [evidence, setEvidence] = useState([]);
   const [experiences, setExperiences] = useState([]); // New state for clinical memory
+  const [feedbackInput, setFeedbackInput] = useState('');
   const [cancerType, setCancerType] = useState('Breast');
   const [patientData, setPatientData] = useState({
     stage: '0',
@@ -205,7 +206,7 @@ function TreatmentPlan() {
     }));
   };
 
-  const generateTreatmentPlan = async (e, overrideData = null, forceRefresh = false) => {
+  const generateTreatmentPlan = async (e, overrideData = null, forceRefresh = false, feedbackText = null) => {
     if (e) e.preventDefault();
     console.log('Initiating generateTreatmentPlan. ForceRefresh:', forceRefresh);
     
@@ -219,7 +220,8 @@ function TreatmentPlan() {
             ...patientData 
         }),
         patientId: pid,
-        forceRefresh
+        forceRefresh,
+        feedback: feedbackText
     };
 
     console.log('Final Payload for Plan Generation:', fullPatientData);
@@ -268,6 +270,12 @@ function TreatmentPlan() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleApplyFeedback = () => {
+    if (!feedbackInput.trim()) return;
+    generateTreatmentPlan(null, null, true, feedbackInput);
+    setFeedbackInput('');
   };
 
   useEffect(() => {
@@ -852,6 +860,47 @@ function TreatmentPlan() {
                         <div className="confidence-label">{treatmentData.confidence}% AI CONFIDENCE</div>
                     </div>
                 </div>
+            </div>
+
+            {/* NEW: AI REVISION REQUEST UI */}
+            <div className="card-glass" style={{ marginTop: '20px', borderLeft: '4px solid #F59E0B' }}>
+               <Typography variant="h6" sx={{ color: '#F59E0B', fontFamily: 'Rajdhani', fontWeight: 700, mb: 1 }}>
+                  AI PROTOCOL REVISION
+               </Typography>
+               <Typography variant="body2" sx={{ color: '#cbd5e1', mb: 2 }}>
+                  Provide clinical feedback to instantly modify the generated treatment plan (e.g., "Patient is allergic to X, switch to Y").
+               </Typography>
+               <Box sx={{ display: 'flex', gap: 2 }}>
+                  <TextField 
+                     fullWidth 
+                     variant="outlined" 
+                     placeholder="Enter your clinical feedback or modifications here..."
+                     value={feedbackInput}
+                     onChange={(e) => setFeedbackInput(e.target.value)}
+                     onKeyDown={(e) => { if (e.key === 'Enter') handleApplyFeedback(); }}
+                     sx={{ 
+                        '& .MuiOutlinedInput-root': { 
+                           color: '#fff', 
+                           '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
+                           '&:hover fieldset': { borderColor: '#F59E0B' },
+                           '&.Mui-focused fieldset': { borderColor: '#F59E0B' }
+                        }
+                     }}
+                  />
+                  <Button 
+                     variant="contained" 
+                     onClick={handleApplyFeedback}
+                     disabled={loading || !feedbackInput.trim()}
+                     sx={{ 
+                        bgcolor: '#F59E0B', color: '#000', 
+                        fontWeight: 700, minWidth: '150px',
+                        '&:hover': { bgcolor: '#d97706' },
+                        '&.Mui-disabled': { bgcolor: 'rgba(245, 158, 11, 0.3)', color: 'rgba(255,255,255,0.3)' }
+                     }}
+                  >
+                     APPLY REVISION
+                  </Button>
+               </Box>
             </div>
 
             {/* 3. DIFFERENTIAL LOGIC EXPLAINER */}

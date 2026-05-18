@@ -253,6 +253,39 @@ exports.downloadReport = async (req, res) => {
         const pathologyData = patient?.pathologyAnalysis ? 
             (typeof patient.pathologyAnalysis === 'string' ? JSON.parse(patient.pathologyAnalysis) : patient.pathologyAnalysis) : {};
 
+        const DailyTask = require('../models/DailyTask');
+        const PatientAlert = require('../models/PatientAlert');
+        const { Op } = require('sequelize');
+
+        // 4. Fetch Adherence History and Alerts
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        const adherenceTasks = await DailyTask.findAll({
+            where: {
+                patientId,
+                date: { [Op.gte]: thirtyDaysAgo.toISOString().split('T')[0] }
+            }
+        });
+
+        const historyMap = {};
+        adherenceTasks.forEach(t => {
+            if (!historyMap[t.date]) historyMap[t.date] = { total: 0, completed: 0 };
+            historyMap[t.date].total++;
+            if (t.isCompleted) historyMap[t.date].completed++;
+        });
+
+        const adherenceHistory = Object.keys(historyMap).map(date => ({
+            date,
+            score: Math.round((historyMap[date].completed / historyMap[date].total) * 100)
+        }));
+
+        const recentAlerts = await PatientAlert.findAll({
+            where: { patientId, timestamp: { [Op.gte]: thirtyDaysAgo } },
+            limit: 5,
+            order: [['timestamp', 'DESC']]
+        });
+
         // 3. Prepare data for Python AI Engine (Cleaned of N/A)
         const reportData = {
             name: formData.name || (patient ? `${patient.firstName} ${patient.lastName}` : ''),
@@ -307,7 +340,11 @@ exports.downloadReport = async (req, res) => {
                 pfs: outcomeData?.progressionFreeSurvival ? `${outcomeData.progressionFreeSurvival.median} Months` : '',
                 qol: outcomeData?.qualityOfLife ? `${outcomeData.qualityOfLife}/100` : '',
                 toxicity: 'Monitor for fatigue and nausea'
-            }
+            },
+
+            toxicity_profile: outcomeData?.toxicityProfile || { "Fatigue": 35, "Nausea": 20, "Anemia": 10 },
+            adherence_history: adherenceHistory,
+            recent_alerts: recentAlerts
         };
 
         // Populate Genomics and Biomarkers based on Type (Cleaned)

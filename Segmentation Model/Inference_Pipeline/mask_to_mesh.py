@@ -22,8 +22,8 @@ if not os.path.exists(probs_path):
     exit(1)
 
 probs = np.load(probs_path)
-# Downsample by 2x to speed up marching cubes (8x less volume to process)
-probs = probs[::2, ::2, ::2]
+# Downsample by 3x to radically reduce face count without needing decimation (27x less volume to process)
+probs = probs[::3, ::3, ::3]
 print("Downsampled Probs shape:", probs.shape)
 
 # =====================================================
@@ -33,9 +33,6 @@ try:
     if np.max(probs) > 0.8:
         verts, faces, _, _ = marching_cubes(probs, level=0.8)
         tumor_mesh = trimesh.Trimesh(vertices=verts, faces=faces)
-        # Decimate: marching cubes on 240^3 data can produce 100k+ faces — reduce to ~5k
-        target_faces = min(5000, len(tumor_mesh.faces))
-        tumor_mesh = tumor_mesh.simplify_quadric_decimation(target_faces)
         output_path = os.path.join(data_dir, "tumor.glb")
         tumor_mesh.export(output_path)
         print(f"[SUCCESS] {output_path} (core) exported — {len(tumor_mesh.faces)} faces")
@@ -51,9 +48,6 @@ try:
     if np.max(probs) > 0.2:
         verts, faces, _, _ = marching_cubes(probs, level=0.2)
         edema_mesh = trimesh.Trimesh(vertices=verts, faces=faces)
-        # Decimate: edema at 0.2 threshold covers most of the volume — reduce aggressively
-        target_faces = min(8000, len(edema_mesh.faces))
-        edema_mesh = edema_mesh.simplify_quadric_decimation(target_faces)
         output_path = os.path.join(data_dir, "edema.glb")
         edema_mesh.export(output_path)
         print(f"[SUCCESS] {output_path} exported — {len(edema_mesh.faces)} faces")

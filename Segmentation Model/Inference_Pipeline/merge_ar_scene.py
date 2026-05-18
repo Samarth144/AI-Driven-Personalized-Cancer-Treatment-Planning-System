@@ -119,20 +119,20 @@ for name, geom in brain_scene.geometry.items():
         
     final_scene.add_geometry(geom, node_name=f"brain_{name}")
 
-    rotation = trimesh.transformations.rotation_matrix(angle=-np.pi / 2, direction=[1, 0, 0])
+rotation = trimesh.transformations.rotation_matrix(angle=-np.pi / 2, direction=[1, 0, 0])
+
+if tumor:
+    print("Generating mesh-based margin lines...")
+    # Lines are generated in the native Z-up medical space
+    lines, margin_data = generate_margin_lines(brain_scene, tumor, rotation)
     
-    if tumor:
-        print("Generating mesh-based margin lines...")
-        # Lines are generated in the native Z-up medical space
-        lines, margin_data = generate_margin_lines(brain_scene, tumor, rotation)
+    # Add to final_scene BEFORE applying rotation
+    for dir_name, line_mesh in lines.items():
+        final_scene.add_geometry(line_mesh, node_name=f"MarginLine_{dir_name}")
         
-        # Add to final_scene BEFORE applying rotation
-        for dir_name, line_mesh in lines.items():
-            final_scene.add_geometry(line_mesh, node_name=f"MarginLine_{dir_name}")
-            
-        margin_json_path = os.path.join(data_dir, "margin_distances.json")
-        with open(margin_json_path, "w") as f:
-            json.dump(margin_data, f, indent=4)
+    margin_json_path = os.path.join(data_dir, "margin_distances.json")
+    with open(margin_json_path, "w") as f:
+        json.dump(margin_data, f, indent=4)
 
 # Rotate to horizontal (applied to everything holistically including MarginLines)
 final_scene.apply_transform(rotation)
@@ -143,7 +143,7 @@ final_scene.apply_transform(rotation)
 try:
     if tumor: tumor.export(os.path.join(data_dir, "tumor.glb"))
     if edema: edema.export(os.path.join(data_dir, "edema.glb"))
-    brain_scene.export(os.path.join(data_dir, "brain.glb"))
+    # Skip exporting the standalone brain.glb to save 10-15 seconds, as the UI only loads tumor_with_brain.glb
             
     final_scene.export(os.path.join(data_dir, "tumor_with_brain.glb"))
     print("[SUCCESS] Precise multi-region model generated with named materials and measurement lines")

@@ -21,7 +21,6 @@ import { useAuth } from '../context/AuthContext';
 import { decryptFromStorage } from '../utils/encryption';
 import './Tumor3DPage.css';
 
-// --- THEME CONSTANTS ---
 const colors = {
   bg: '#0B1221',
   teal: '#059789',
@@ -31,6 +30,22 @@ const colors = {
   text: '#F8FAFC',
   muted: '#64748B',
   border: 'rgba(5, 151, 137, 0.3)'
+};
+
+const anatomicalStructures = {
+  'Frontal Lobe': { color: '#3B82F6', meshes: ['mesh0', 'mesh1', 'mesh2', 'mesh3', 'mesh4', 'mesh5'] },
+  'Temporal Lobe': { color: '#10B981', meshes: ['mesh6', 'mesh7', 'mesh10', 'mesh11', 'mesh12'] },
+  'Parietal Lobe': { color: '#8B5CF6', meshes: ['mesh13', 'mesh14', 'mesh15', 'mesh16', 'mesh17'] },
+  'Motor Cortex': { color: '#F59E0B', meshes: ['mesh18', 'mesh19', 'mesh20', 'mesh21', 'mesh22'] },
+  'Vascular Bundle': { color: '#EF4444', meshes: ['mesh23', 'mesh24', 'mesh25', 'mesh26', 'mesh27'] },
+  'Tumor Mass': { color: '#EC4899', meshes: ['tumormaterial'] }
+};
+
+const hexToRgb = (hex) => {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  return [r, g, b];
 };
 
 // --- SUB-COMPONENTS ---
@@ -73,7 +88,7 @@ const MetricBox = ({ label, value, unit, highlight = false }) => (
   </Box>
 );
 
-const ThreeDViewport = ({ volume, location, analysisId, layers, brainOpacity, setBrainOpacity, realisticView, margins, status, data }) => {
+const ThreeDViewport = ({ volume, location, analysisId, layers, brainOpacity, setBrainOpacity, realisticView, margins, status, data, activeStructure }) => {
   const viewerRef = useRef(null);
   const [isRotating, setIsRotating] = useState(true);
 
@@ -95,6 +110,29 @@ const ThreeDViewport = ({ volume, location, analysisId, layers, brainOpacity, se
       const isBrain = name.includes('brainpart');
 
       mat.setAlphaMode("BLEND");
+
+      if (activeStructure) {
+        const structure = anatomicalStructures[activeStructure];
+        const isPartOfStructure = structure.meshes.some(m => name.includes(m.toLowerCase()));
+        
+        if (isPartOfStructure) {
+          mat.setAlphaMode("OPAQUE");
+          const rgb = hexToRgb(structure.color);
+          pbr.setBaseColorFactor([...rgb, 1]);
+          mat.setEmissiveFactor([rgb[0]*0.5, rgb[1]*0.5, rgb[2]*0.5]);
+        } else if (isTumor) {
+          // Keep tumor visible at lower opacity for spatial context
+          mat.setAlphaMode("BLEND");
+          pbr.setBaseColorFactor([1.0, 0.05, 0.05, 0.4]);
+          mat.setEmissiveFactor([0.3, 0, 0]);
+        } else {
+          // Dim everything else heavily
+          mat.setAlphaMode("BLEND");
+          pbr.setBaseColorFactor([1, 1, 1, 0.05]);
+          mat.setEmissiveFactor([0, 0, 0]);
+        }
+        return; // Skip normal logic
+      }
 
       if (isTumor) {
         // Tumor: Force Vibrant Neon Red with Emissive Glow
@@ -126,7 +164,7 @@ const ThreeDViewport = ({ volume, location, analysisId, layers, brainOpacity, se
   // Run update whenever these props change
   useEffect(() => {
     updateMaterials();
-  }, [layers.tumor, layers.edema, layers.brain, brainOpacity, realisticView, analysisId, modelReady]);
+  }, [layers.tumor, layers.edema, layers.brain, brainOpacity, realisticView, analysisId, modelReady, activeStructure]);
 
   const handleFullscreen = () => {
     if (viewerRef.current) {
@@ -276,6 +314,7 @@ const Tumor3DPage = () => {
   const [layers, setLayers] = useState({ tumor: true, edema: true, brain: true, margins: true });
   const [realisticView, setRealisticView] = useState(true);
   const [brainOpacity, setBrainOpacity] = useState(0.25);
+  const [activeStructure, setActiveStructure] = useState(null);
   const [patientData, setPatientData] = useState(null);
   const [analysisId, setAnalysisId] = useState(null);
   const [qrCodeUrl, setQrCodeUrl] = useState(null);
@@ -423,16 +462,38 @@ const Tumor3DPage = () => {
           </Box>
           <Box className="glass-panel" sx={{ flex: 1 }}>
             <Typography variant="subtitle2" sx={{ fontFamily: '"Rajdhani"', fontWeight: 700, color: '#fff', mb: 2 }}>ANATOMICAL STRUCTURES</Typography>
-            {['Frontal Lobe', 'Temporal Lobe', 'Parietal Lobe', 'Motor Cortex', 'Tumor Mass', 'Vascular Bundle'].map(item => (
-              <Chip key={item} label={item} sx={{ m: 0.5, bgcolor: 'rgba(255,255,255,0.05)', color: colors.muted, border: '1px solid rgba(255,255,255,0.1)', fontFamily: '"Space Grotesk"', fontSize: '0.7rem' }} />
-            ))}
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {Object.keys(anatomicalStructures).map(item => {
+                const isActive = activeStructure === item;
+                const structData = anatomicalStructures[item];
+                return (
+                  <Chip 
+                    key={item} 
+                    label={item} 
+                    onClick={() => setActiveStructure(isActive ? null : item)}
+                    sx={{ 
+                      bgcolor: isActive ? structData.color : 'rgba(255,255,255,0.05)', 
+                      color: isActive ? '#fff' : colors.muted, 
+                      border: `1px solid ${isActive ? structData.color : 'rgba(255,255,255,0.1)'}`, 
+                      fontFamily: '"Space Grotesk"', 
+                      fontSize: '0.7rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        bgcolor: isActive ? structData.color : 'rgba(255,255,255,0.1)'
+                      }
+                    }} 
+                  />
+                );
+              })}
+            </Box>
           </Box>
         </Box>
 
         <ThreeDViewport
           volume={analysisMetrics.volume} location={analysisMetrics.location} analysisId={analysisId}
           layers={layers} brainOpacity={brainOpacity} setBrainOpacity={setBrainOpacity} realisticView={realisticView} margins={margins} status={analysisStatus}
-          data={analysisData}
+          data={analysisData} activeStructure={activeStructure}
         />
 
         <Box sx={{ width: '300px', display: 'flex', flexDirection: 'column', gap: 2 }}>

@@ -104,7 +104,7 @@ try:
             roi_size=ROI_SIZE,
             sw_batch_size=SW_BATCH_SIZE,
             predictor=model,
-            overlap=0.5,
+            overlap=0.1,  # Reduced from 0.5 to massively speed up CPU inference (evaluates ~5x fewer windows)
         )
         
         # Calculate confidence

@@ -542,6 +542,7 @@ def recommend_treatment():
         cancer_type = data.get('cancerType') or data.get('cancer_type')
         patient_query = data.get('query', '')
         patient_queries = data.get('queries', [])
+        feedback = data.get('feedback')
 
         if not cancer_type:
             return jsonify({"error": "No cancer type provided."}), 400
@@ -599,7 +600,8 @@ def recommend_treatment():
             evidence_levels=rules.get("evidence_levels", []),
             cancer=cancer_type, 
             query=patient_query, 
-            queries=patient_queries
+            queries=patient_queries,
+            feedback=feedback
         )
 
         # Inject Personalization Insight from Rule Engine into plan_data

@@ -326,38 +326,6 @@ exports.processAnalysis = async (req, res) => {
                  }
              });
 
-             // 2. Trigger 3D Mesh Generation & File Management in Background
-             // We do NOT await this, as the user wants the metrics immediately.
-             (async () => {
-                 try {
-                     console.log("[Background] Generating 3D Mesh for AR...");
-                     await runScript('mask_to_mesh.py', ['--data_dir', resultsDir]);
-                     await runScript('merge_ar_scene.py', ['--data_dir', resultsDir]);
-                     
-                     console.log(`[Background] Dynamic assets stored in: ${resultsDir}`);
-
-                     // Update analysis record when background tasks are truly finished
-                     const currentAnalysis = await Analysis.findByPk(analysis.id);
-                     if (currentAnalysis) {
-                         const updatedData = { ...currentAnalysis.data, isModelReady: true };
-                         
-                         // Add margin distances if they exist
-                         try {
-                             const marginPath = path.join(resultsDir, 'margin_distances.json');
-                             if (fs.existsSync(marginPath)) {
-                                 updatedData.margin_distances = JSON.parse(fs.readFileSync(marginPath, 'utf8'));
-                             }
-                         } catch (e) { console.error("[Background] Failed to read margins", e); }
-
-                         await currentAnalysis.update({ data: updatedData });
-                         console.log(`[Background] Analysis ${analysis.id} fully finalized (Model Ready).`);
-                     }
-
-                 } catch (meshErr) {
-                     console.error("[Background] 3D Mesh Generation failed", meshErr);
-                 }
-             })();
-
              // Generate analysis results to return immediately
              const results = generateMockAnalysis(analysis.analysisType);
              results.isModelReady = false; // Initial state for background task
@@ -390,7 +358,41 @@ exports.processAnalysis = async (req, res) => {
              results.segmentationOutput = "Metrics extracted. 3D Model generating in background.";
              updateData.data = results;
 
-            await analysis.update(updateData);
+             // UPDATE DATABASE IMMEDIATELY before spawning background tasks
+             // This prevents the background task from reading stale data or being overwritten
+             await analysis.update(updateData);
+
+             // 2. Trigger 3D Mesh Generation & File Management in Background
+             // We do NOT await this, as the user wants the metrics immediately.
+             (async () => {
+                 try {
+                     console.log("[Background] Generating 3D Mesh for AR...");
+                     await runScript('mask_to_mesh.py', ['--data_dir', resultsDir]);
+                     await runScript('merge_ar_scene.py', ['--data_dir', resultsDir]);
+                     
+                     console.log(`[Background] Dynamic assets stored in: ${resultsDir}`);
+
+                     // Update analysis record when background tasks are truly finished
+                     const currentAnalysis = await Analysis.findByPk(analysis.id);
+                     if (currentAnalysis) {
+                         const updatedData = { ...currentAnalysis.data, isModelReady: true };
+                         
+                         // Add margin distances if they exist
+                         try {
+                             const marginPath = path.join(resultsDir, 'margin_distances.json');
+                             if (fs.existsSync(marginPath)) {
+                                 updatedData.margin_distances = JSON.parse(fs.readFileSync(marginPath, 'utf8'));
+                             }
+                         } catch (e) { console.error("[Background] Failed to read margins", e); }
+
+                         await currentAnalysis.update({ data: updatedData });
+                         console.log(`[Background] Analysis ${analysis.id} fully finalized (Model Ready).`);
+                     }
+
+                 } catch (meshErr) {
+                     console.error("[Background] 3D Mesh Generation failed", meshErr);
+                 }
+             })();
 
             res.json({
                 success: true,
